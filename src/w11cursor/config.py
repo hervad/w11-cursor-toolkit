@@ -73,7 +73,7 @@ class Theme:
     ani_budget: int
     ani_order: tuple[str, ...]
     ani_rate_mode: str
-    png_min_size: int
+    layer_format: str
     variants: list[Variant]
     cursors: dict[str, CursorSpec]
     master: Path | None = None         # [source] master (absolute)
@@ -213,7 +213,7 @@ def load_theme(path: str | Path) -> Theme:
         ani_budget=int(sz.get("ani_budget_bytes", S.ANI_BUDGET_BYTES)),
         ani_order=tuple(sz.get("ani_chunk_order", S.ANI_CHUNK_ORDER)),
         ani_rate_mode=sz.get("ani_rate", S.ANI_RATE_MODE),
-        png_min_size=int(sz.get("png_min_size", S.PNG_MIN_SIZE)),
+        layer_format=sz.get("layer_format", S.LAYER_FORMAT),
         variants=variants,
         cursors=cursors,
         master=master,
@@ -226,6 +226,11 @@ def load_theme(path: str | Path) -> Theme:
 
     if theme.renderer not in RENDERERS:
         raise ConfigError(f"[render] renderer must be one of: {', '.join(RENDERERS)}")
+    if "png_min_size" in sz:
+        raise ConfigError("[sizes] png_min_size was removed: it produced .cur files mixing BMP and PNG layers, and Windows "
+                          "ignored their PNG layers. Use layer_format = \"png\" (default) or \"bmp\" (ADR-4).")
+    if theme.layer_format not in S.LAYER_FORMATS:
+        raise ConfigError(f"[sizes] layer_format must be one of: {', '.join(S.LAYER_FORMATS)}")
     if theme.ani_rate_mode not in S.ANI_RATE_MODES:
         raise ConfigError(f"[sizes] ani_rate must be one of: {', '.join(S.ANI_RATE_MODES)}")
     for name, lst in (("static", theme.static_sizes), ("animated", theme.animated_sizes)):

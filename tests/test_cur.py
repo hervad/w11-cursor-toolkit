@@ -10,15 +10,19 @@ def img(n, color=(255, 255, 255, 255)):
     return im
 
 
-@pytest.mark.parametrize("png_min", [1, 256, 999])
-def test_roundtrip_sizes_hotspots_formats(png_min):
+@pytest.mark.parametrize("layer_format", ["png", "bmp"])
+def test_roundtrip_sizes_hotspots_formats(layer_format):
     sizes = [32, 48, 64, 128, 256]
-    blob = pack_cur([CursorImage(img(n), (n // 8, n // 16)) for n in sizes], png_min_size=png_min)
+    blob = pack_cur([CursorImage(img(n), (n // 8, n // 16)) for n in sizes], layer_format=layer_format)
     entries = parse_cur(blob)
     assert [e.size for e in entries] == sizes
     assert [e.hotspot for e in entries] == [(n // 8, n // 16) for n in sizes]
-    for e in entries:
-        assert e.fmt == ("png" if e.size >= png_min else "bmp")
+    assert {e.fmt for e in entries} == {layer_format}   # one format per file, never mixed (ADR-4)
+
+
+def test_unknown_layer_format_is_rejected():
+    with pytest.raises(ValueError, match="layer_format"):
+        pack_cur([CursorImage(img(32), (0, 0))], layer_format="jpeg")
 
 
 def test_256_is_encoded_as_zero_in_directory():

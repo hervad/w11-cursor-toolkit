@@ -182,8 +182,8 @@ Two side findings:
   `Test-LoadCursors.ps1` only checks loading, so this doesn't change its pass/fail, but its "size" arguments are not
   exact layer sizes unless the pointer size is 32.
 - **Files mixing BMP and PNG layers never used their PNG layers** (late_layers, C1), even at offset 70; all-PNG and
-  all-BMP files did. 2 of 2 files - a pattern, not yet a rule. The toolkit ships all-PNG (png_min_size = 1); the
-  `png_min_size = 256` escape hatch would create exactly such mixed files - **don't use it without a test**.
+  all-BMP files did. 2 of 2 files. **Mixing is now impossible** (ADR-4 update): `layer_format = "png" | "bmp"`
+  replaced `png_min_size`, whose 256 setting would have created exactly such files; `validate` rejects mixed files.
 
 ### Automatic measurement attempt (Measure-CursorSize.ps1, 2026-10-07, [build 26200.9457], 100 %) - REMOVED
 The script was removed from `scripts/` (toolkit commit `0244c14`); it is in git history at toolkit commit `45124d3`.
@@ -204,7 +204,7 @@ a resampled one matches none). Untested.
 |---|---|---|
 | Static | 32 48 64 72 80 96 112 120 128 144 160 168 176 192 200 208 216 224 240 256 | computed in `sizes.py`: every size the bucketed rule can choose (bases 32…256 × 1.0, 1.5 verified; × 2.0, 2.5, 3.0 assumed), cap 256 (toolkit `df59eb8`) |
 | Animated | 32 48 64 72 80 96 120 128 144 | option C (2026-10-08): sliders 1-5 + 7 at 100-149 %, 1-5 at 150-199 %; Polar busy.ani ~569 KB, largest image offset ~42 % of the limit |
-| Layer encoding | PNG for all layers | ~10–15× smaller than BMP; proven by Capitaine. Never mix BMP+PNG in one file (PNG layers were ignored, see "Static .cur") |
+| Layer encoding | `layer_format = "png"` (every layer) | ~10–15× smaller than BMP; proven by Capitaine. One format per file - mixing is impossible and rejected by `validate` (ADR-4) |
 | .ani image offset | ≤ 65,535 per frame (error), warn > 90 % | measured loader limit (toolkit `30b23e6`) |
 | .ani budget | 1,000,000 B | download-size cap only; not a Windows limit (29 MB loads) |
 | .ani `rate` chunk | only when delays differ (`ani_rate = "auto"`), placed after `LIST` | ADR-11; matches Microsoft for uniform delays |

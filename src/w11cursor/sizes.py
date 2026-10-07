@@ -39,15 +39,13 @@ ANI_OFFSET_WARN_FRACTION = 0.90
 # Download-size cap per .ani file (bytes). NOT a Windows limit (see above); keeps zips reasonable.
 ANI_BUDGET_BYTES = 1_000_000
 
-# Layers at or above this size are stored PNG-compressed inside .cur; smaller ones
-# use classic 32-bit BMP + AND mask. Default 1 = PNG for every layer:
-#   * BMP is ~10-15x larger (15 BMP layers = ~800 KB per .cur, an 8-frame .ani > 1.3 MB)
-#   * capitaine-cursors-w11-hidpi already ships PNG layers at all sizes and they load
-#     on Windows 11 (its 7-layer .ani files are ~545 KB, only possible with PNG frames).
-# WARNING (measured 2026-10-08, docs/SIZE_POLICY.md "Static .cur"): in .cur files that MIX BMP and PNG layers,
-# Windows never used the PNG layers (2 of 2 files). png_min_size = 256 creates exactly such files (BMP below 256,
-# PNG at 256), so don't use it as a fallback without a pixel test. All-PNG (1) and all-BMP (> 256) are fine.
-PNG_MIN_SIZE = 1
+# How every layer of a .cur (and of each .ani frame) is stored - ONE format per file, never mixed (ADR-4):
+#   "png" (default): PNG-compressed, ~10-15x smaller than BMP; loads on Win11 (all-PNG files tested up to 29 MB .ani).
+#   "bmp": classic 32-bit BMP + AND mask, like Microsoft's own cursors.
+# Mixing is impossible by design: in .cur files that mixed BMP and PNG layers, Windows never used the PNG layers
+# (2 of 2 files, docs/SIZE_POLICY.md "Static .cur"). The old png_min_size = 256 escape hatch produced such files.
+LAYER_FORMAT = "png"
+LAYER_FORMATS = ("png", "bmp")
 
 # Top-level RIFF chunk order for .ani. The order below is the one that fixed the
 # "corrupt" errors in capitaine-cursors-w11-hidpi. "rate" here only says WHERE the

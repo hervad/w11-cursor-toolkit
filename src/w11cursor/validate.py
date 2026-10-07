@@ -28,12 +28,18 @@ class Report:
         return not self.errors
 
 
-def _check_cur(blob: bytes, sizes, spec, canvas, mode, where, rep: Report):
+def _check_cur(blob: bytes, sizes, spec, canvas, mode, where, rep: Report, layer_format: str | None = None):
     try:
         entries = parse_cur(blob)
     except ValueError as e:
         rep.errors.append(f"{where}: unreadable .cur ({e})")
         return
+    fmts = sorted({e.fmt for e in entries})
+    if len(fmts) > 1:
+        rep.errors.append(f"{where}: mixes {' and '.join(fmts)} layers - Windows ignores the PNG layers in such files "
+                          "(ADR-4); every layer must use one format")
+    elif layer_format and fmts and fmts[0] != layer_format:
+        rep.errors.append(f"{where}: layers are {fmts[0]}, theme says layer_format = {layer_format!r}")
     got = sorted(e.size for e in entries)
     if got != sorted(sizes):
         rep.errors.append(f"{where}: layers {got} != expected {sorted(sizes)}")
@@ -101,7 +107,7 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
                 continue
             blob = f.read_bytes()
             if not spec.animated:
-                _check_cur(blob, theme.static_sizes, spec, canvas, theme.hotspot_mode, where, rep)
+                _check_cur(blob, theme.static_sizes, spec, canvas, theme.hotspot_mode, where, rep, theme.layer_format)
                 continue
             try:
                 info = parse_ani(blob)
@@ -127,7 +133,8 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
                 rep.errors.append(f"{where}: {len(blob):,} B exceeds .ani download budget {theme.ani_budget:,} B")
             _check_ani_offsets(info, where, rep)
             for i, fr in enumerate(info.frames):
-                _check_cur(fr, theme.animated_sizes, spec, canvas, theme.hotspot_mode, f"{where}#frame{i}", rep)
+                _check_cur(fr, theme.animated_sizes, spec, canvas, theme.hotspot_mode, f"{where}#frame{i}", rep,
+                           theme.layer_format)
         _check_notices(theme, v, folder, rep)
         inf = folder / "install.inf"
         if not inf.exists():

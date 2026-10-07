@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from PIL import Image
 
-from ..sizes import PNG_MIN_SIZE
+from ..sizes import LAYER_FORMAT, LAYER_FORMATS
 
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 
@@ -65,7 +65,11 @@ def _png_payload(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def pack_cur(images: list[CursorImage], png_min_size: int = PNG_MIN_SIZE) -> bytes:
+def pack_cur(images: list[CursorImage], layer_format: str = LAYER_FORMAT) -> bytes:
+    """Every layer in ONE format ("png" or "bmp") - mixed files lose their PNG layers on Windows (ADR-4)."""
+    if layer_format not in LAYER_FORMATS:
+        raise ValueError(f"layer_format must be one of {LAYER_FORMATS}, got {layer_format!r}")
+    encode = _png_payload if layer_format == "png" else _bmp_payload
     if not images:
         raise ValueError("a cursor needs at least one image")
     images = sorted(images, key=lambda c: c.image.width)
@@ -86,7 +90,7 @@ def pack_cur(images: list[CursorImage], png_min_size: int = PNG_MIN_SIZE) -> byt
         hx, hy = ci.hotspot
         if not (0 <= hx < w and 0 <= hy < h):
             raise ValueError(f"hotspot {ci.hotspot} outside {w}x{h}")
-        payload = _png_payload(ci.image) if w >= png_min_size else _bmp_payload(ci.image)
+        payload = encode(ci.image)
         entries += struct.pack(
             "<BBBBHHII", w % 256, h % 256, 0, 0, hx, hy, len(payload), offset + len(data)
         )

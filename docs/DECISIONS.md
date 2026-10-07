@@ -13,7 +13,13 @@ CI builds on `ubuntu-latest`, then loads every file through `user32` on `windows
 Fedora/WSL, test on Windows.
 
 **ADR-4 PNG layers by default.** BMP layers make a 15-layer `.cur` ~800 KB and an 8-frame `.ani` >1.3 MB.
-Capitaine already ships PNG layers that load on Win11. Escape hatch: `png_min_size = 256`.
+Capitaine already ships PNG layers that load on Win11.
+*Update (2026-10-08, build 26200.9457):* **one format per file, never mixed.** In `.cur` files that mixed BMP and PNG
+layers, Windows never used the PNG layers (2 of 2 files, even a PNG at offset 70; all-PNG and all-BMP files used every
+layer - SIZE_POLICY.md "Static .cur"). The old escape hatch `png_min_size = 256` (BMP below 256, PNG at 256) would
+have produced exactly those files. It is gone: `[sizes] layer_format = "png"` (default) or `"bmp"` applies to every
+layer, `pack_cur` cannot mix, a leftover `png_min_size` key is a config error, and `validate` errors on any `.cur` or
+`.ani` frame that mixes formats or differs from `layer_format`.
 
 **ADR-5 Hotspot "point" mode by default.** `round(v*N/canvas)` treats hotspots as geometric points (arrow tips).
 It reproduces the validated Capitaine values exactly. The pixel-centre formula from the research report

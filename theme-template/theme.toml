@@ -39,7 +39,7 @@ hotspot_mode  = "point"  # "point": geometric SVG point (arrow tips). "center": 
 # ani_budget_bytes = 1000000
 # ani_chunk_order  = ["anih", "LIST", "rate"]
 # ani_rate         = "auto"   # "auto": rate chunk only when delays differ (Microsoft layout) | "always"
-# png_min_size     = 1   # 256 = BMP below 256 px (fallback if a PNG layer is ever rejected)
+# layer_format     = "png"   # or "bmp" - one format for every layer; never mixed (ADR-4)
 
 # Only if upstream ships ONE Inkscape master with a layer per drawing (e.g. Polar) - see ADR-13:
 # [source]

@@ -46,3 +46,15 @@ def test_unknown_renderer_in_theme_is_an_error(tmp_path):
     p.write_text(DEMO.read_text().replace('renderer = "cairosvg"', 'renderer = "inkscape"'))
     with pytest.raises(ConfigError, match="renderer"):
         load_theme(p)
+
+
+@pytest.mark.parametrize("sizes_table, message", [
+    ("png_min_size = 256", "png_min_size was removed"),
+    ('layer_format = "jpeg"', "layer_format must be one of"),
+])
+def test_layer_format_config_errors(tmp_path, sizes_table, message):
+    p = tmp_path / "theme.toml"
+    p.write_text(DEMO.read_text().replace('svg_dir = "svg"', f'svg_dir = "{(DEMO.parent / "svg").as_posix()}"')
+                 + f"\n[sizes]\n{sizes_table}\n")
+    with pytest.raises(ConfigError, match=message):
+        load_theme(p)

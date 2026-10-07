@@ -130,3 +130,60 @@ def test_validator_enforces_ani_image_offset_limit(tmp_path):
     busy.write_bytes(pack_ani(over, 4, theme.ani_order))
     rep = validate_theme(theme, tmp_path, only=["light"])
     assert any(e.startswith("light/busy.ani#frame0: an image starts at byte 66,000") for e in rep.errors), rep.errors
+
+
+def _mixed_cur(images) -> bytes:
+    """A .cur whose layers alternate BMP/PNG - what the removed png_min_size=256 escape hatch produced."""
+    import struct
+
+    from w11cursor.pack.cur import _bmp_payload, _png_payload
+
+    images = sorted(images, key=lambda c: c.image.width)
+    pays = [(_bmp_payload if i % 2 else _png_payload)(c.image) for i, c in enumerate(images)]
+    off, dirs = 6 + 16 * len(images), b""
+    for c, p in zip(images, pays):
+        w = c.image.width
+        dirs += struct.pack("<BBBBHHII", w % 256, w % 256, 0, 0, *c.hotspot, len(p), off)
+        off += len(p)
+    return struct.pack("<HHH", 0, 2, len(images)) + dirs + b"".join(pays)
+
+
+def test_validator_rejects_mixed_layer_formats(tmp_path):
+    from w11cursor.build import _layers
+    from w11cursor.pack import pack_ani, parse_ani, parse_cur
+
+    theme = load_theme(DEMO)
+    v = theme.variants[0]
+    build_theme(theme, tmp_path, only=["light"], log=lambda *_: None)
+    # static: same sizes and hotspots as the real pointer.cur, only the encoding is mixed
+    mixed = _mixed_cur(_layers(theme, v, theme.resolve("arrow"), None, theme.static_sizes))
+    assert {e.fmt for e in parse_cur(mixed)} == {"bmp", "png"}
+    (tmp_path / "light" / "pointer.cur").write_bytes(mixed)
+    # animated: frame 0 of busy.ani mixed, the rest untouched
+    busy = tmp_path / "light" / "busy.ani"
+    frames = parse_ani(busy.read_bytes()).frames
+    spec = theme.resolve("busy")
+    frames[0] = _mixed_cur(_layers(theme, v, spec, 0, theme.animated_sizes))
+    busy.write_bytes(pack_ani(frames, spec.delay, theme.ani_order))
+    rep = validate_theme(theme, tmp_path, only=["light"])
+    assert any(e.startswith("light/pointer.cur: mixes bmp and png layers") for e in rep.errors), rep.errors
+    assert any(e.startswith("light/busy.ani#frame0: mixes bmp and png layers") for e in rep.errors), rep.errors
+    assert not any("#frame1:" in e for e in rep.errors)
+
+
+def test_layer_format_bmp_builds_all_bmp(tmp_path):
+    from w11cursor.pack import parse_ani, parse_cur
+
+    root = tmp_path / "theme"
+    root.mkdir()
+    (root / "LICENSE").write_text("MIT")
+    svg = (DEMO.parent / "svg").as_posix()
+    # small animated sizes: uncompressed BMP frames with option C's sizes would break the .ani offset limit
+    (root / "theme.toml").write_text(DEMO.read_text().replace('svg_dir = "svg"', f'svg_dir = "{svg}"')
+                                     + '\n[sizes]\nlayer_format = "bmp"\nanimated = [32, 48, 64]\n')
+    theme = load_theme(root / "theme.toml")
+    build_theme(theme, tmp_path / "dist", only=["light"], log=lambda *_: None)
+    assert validate_theme(theme, tmp_path / "dist", only=["light"]).ok
+    assert {e.fmt for e in parse_cur((tmp_path / "dist" / "light" / "pointer.cur").read_bytes())} == {"bmp"}
+    fr = parse_ani((tmp_path / "dist" / "light" / "busy.ani").read_bytes()).frames[0]
+    assert {e.fmt for e in parse_cur(fr)} == {"bmp"}

@@ -60,10 +60,10 @@ def _layers(theme: Theme, variant: Variant, spec: CursorSpec, frame: int | None,
 def build_cursor(theme: Theme, variant: Variant, key: str) -> tuple[bytes, bool]:
     spec = theme.resolve(key)
     if not spec.animated:
-        return pack_cur(_layers(theme, variant, spec, None, theme.static_sizes), theme.png_min_size), False
+        return pack_cur(_layers(theme, variant, spec, None, theme.static_sizes), theme.layer_format), False
     frames = []
     for i in range(spec.frame_count):
-        frames.append(pack_cur(_layers(theme, variant, spec, i, theme.animated_sizes), theme.png_min_size))
+        frames.append(pack_cur(_layers(theme, variant, spec, i, theme.animated_sizes), theme.layer_format))
     blob = pack_ani(frames, spec.delay, theme.ani_order, title=variant.scheme_name, artist=theme.porter or None,
                     rate_mode=theme.ani_rate_mode)
     return blob, True
