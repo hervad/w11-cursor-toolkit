@@ -31,7 +31,6 @@ w11-cursors/                         ← workspace folder = LOCAL-ONLY git repo 
     ├── future-cyan-cursors-w11-hidpi/     GPL-3.0   1 variant
     ├── comix-cursors-w11-hidpi/           GPL-3.0   12 variants
     ├── polar-cursors-w11-hidpi/           GPL-2.0-or-later   3 variants (author notice COPYRIGHT~)
-    ├── obsidian-cursors-w11-hidpi/        ⛔ no licence found, BLOCKED + PRIVATE
     ├── capitaine-cursors-w11-hidpi/       (git clone of existing repo → migrate)
     └── Layan-Gold-cursors-for-Windows/    (git clone of existing repo → migrate)
 ```

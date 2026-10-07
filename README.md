@@ -38,16 +38,26 @@ differs — **releases are always the CI build**.
 |---|---|
 | `w11cursor build theme.toml --out dist` | Render + pack all variants, write INF, zip |
 | `w11cursor validate theme.toml --dist dist` | Re-read built bytes; fail on wrong sizes/hotspots/order/budget |
-| `w11cursor inspect FILE...` | Dump any `.cur`/`.ani` (use on other ports and `C:\Windows\Cursors\aero_*`) |
+| `w11cursor inspect FILE...` | Dump any `.cur`/`.ani`: layers, formats, hotspots, image offsets, `.ani` chunk layout (also `C:\Windows\Cursors\aero_*`) |
+| `w11cursor inspect --lenient FILE...` | Same for files whose directory sizes disagree with their images: reports claimed vs real size instead of failing |
 | `w11cursor probe` | Write the size-probe cursor (each layer shows its own px size) |
 | `w11cursor unpack theme.toml` | Tarball upstreams: check the vendored archive's SHA-256, extract only `[upstream] extract` into a git-ignored folder (also the CI `pre-build`) |
 
 Windows-only helpers in `scripts/`: `Test-LoadCursors.ps1` (loads every layer through the
 real user32 loader — used by CI), `Get-AniFrameTiming.ps1` (per-step `.ani` delays as user32 parsed
-them, checked against a Microsoft control file — CI, non-blocking for now) and `Set-CursorSize.ps1`
-(changes pointer size live).
+them, checked against a Microsoft control file — CI, non-blocking for now), `Run-SizeProbe.ps1` (interactive size
+probe: shows which layer Windows picks per pointer size and display scale; restores all pointer settings) and
+`Set-CursorSize.ps1` (changes pointer size live).
+
+Why the defaults are what they are - measured layer choice, size lists, `.ani` limits - is in [`docs/`](docs/):
+[SIZE_POLICY](docs/SIZE_POLICY.md), [DECISIONS](docs/DECISIONS.md) (ADRs), [ARCHITECTURE](docs/ARCHITECTURE.md),
+[LAYER_SPLITTING_DESIGN](docs/LAYER_SPLITTING_DESIGN.md), [LEGAL](docs/LEGAL.md). Raw probe readings:
+[docs/probe-results.csv](docs/probe-results.csv).
 
 ## Using it from a theme repo
+
+Start from [`theme-template/`](theme-template/) (theme.toml with every option commented, README, CREDITS,
+workflow). The theme's workflow calls the reusable build:
 
 ```yaml
 # .github/workflows/release.yml
@@ -56,6 +66,7 @@ jobs:
     uses: hervad/w11-cursor-toolkit/.github/workflows/build-theme.yml@v0.1.0
     with:
       toolkit-ref: v0.1.0
+      # pre-build: w11cursor unpack theme.toml   # if upstream is a vendored tarball ([upstream] archive/sha256)
     permissions:
       contents: write
 ```

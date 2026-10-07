@@ -56,7 +56,7 @@ repeats that check in CI (non-blocking until it passes on the GitHub runner; con
 **Themes whose SVGs use filters use `resvg`** (resvg-py 0.5.0, pure abi3 wheel, no native deps): cairosvg 2.9.1
 implements only feOffset/feBlend/feFlood and draws `feGaussianBlur` shadows hard-edged.
 *Evidence:* fixture `tests/fixtures/blur-shadow.svg` at 128 px: cairosvg 2 alpha levels, resvg 243 (the maintainer's own
-test: 8 vs 161). Obsidian A/B (local only, `_vendor/scratch/obsidian-ab/`): hard offset shadows with cairosvg,
+test: 8 vs 161). Obsidian A/B (local comparison, not published): hard offset shadows with cairosvg,
 soft shadows with resvg at 32/64/128. Recolour is the same text replacement for both backends.
 *Safety:* resvg loads `<image>` files by absolute path even without `resources_dir` (verified), so every SVG
 passes one shared guard before ANY backend (`render/guard.py`, see LEGAL.md): only `#id` and `data:` references,

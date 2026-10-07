@@ -3,7 +3,7 @@
 Status: **layer splitting + rotation IMPLEMENTED (ADR-13); drop shadow (§12) designed, rejected (ADR-14).** Evidence gathered 2026-10-07 [build 26200.9457] with local scratch scripts
 (outside every repo). Numbers are measured unless marked *inferred*.
 
-Polar (and Obsidian, if its licence clears) ship ONE `Cursors.svg` with one Inkscape layer per drawing.
+Polar (and Obsidian) ship ONE `Cursors.svg` with one Inkscape layer per drawing.
 The toolkit today expects one SVG file per cursor. This design adds a second way to name a cursor's art:
 "these layers of the master", plus an optional transform and an optional rotation animation.
 
@@ -166,7 +166,7 @@ Green 88.2° (+74.2°). → apply the same hue rotation to the two gradient stop
 | Green | `#ff5e13 → #7cff13`, `#912121 → #769121` | 88.2° / 0.471 / 0.720 | 88.1° / 0.455 / 0.533 |
 
 Hue matches within 0.1°. The lower saturation (0.533 vs 0.720) is identical for the un-recoloured default, so it
-is a renderer/export difference, not a recolour error. Swatches: `_vendor/scratch/polar-design/recolor-compare.png`.
+is a renderer/export difference, not a recolour error. (Swatch comparison done locally, not published.)
 
 README note (proposed): *"Blue and Green recolour the busy/working bar by rotating the original orange's hue
 (+180° / +74°), measured from the upstream PNGs. Upstream's own recolouring script is an incomplete draft, so
@@ -214,7 +214,7 @@ Options (maintainer chooses):
 - Licence of those glyph outlines: they derive from URW's Nimbus Roman No9 L, which URW released under the GPL
   (the Ghostscript font set) — *from memory, not verified here*; compatible with GPL-2.0-or-later in any case,
   and the author distributed the converted outlines as part of his GPL work.
-- Obsidian (blocked) is different: its "?" is live `<text>` in Bitstream Vera Sans → would need an override with
+- Obsidian is different: its "?" is live `<text>` in Bitstream Vera Sans → would need an override with
   the text converted to paths; Vera's licence allows embedding outlines (*from memory; check if it ever matters*).
 
 ---
