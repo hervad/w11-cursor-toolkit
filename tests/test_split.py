@@ -116,6 +116,13 @@ def test_errors(master, kwargs, message):
         extract(master, **kwargs)
 
 
+def test_old_inkscape_sodipodi_namespace_is_dropped_too():
+    # Polar (Inkscape 0.4x) uses http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd for sodipodi:namedview
+    old = MASTER.replace("http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd",
+                         "http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd")
+    assert "namedview" not in extract(old, ["A"])
+
+
 def test_matching_viewbox_and_px_units_are_accepted():
     m = MASTER.replace('width="16"', 'width="16px"').replace('height="16">', 'height="16" viewBox="0 0 16 16">')
     assert 'viewBox="0 0 16 16"' in extract(m, ["A"])

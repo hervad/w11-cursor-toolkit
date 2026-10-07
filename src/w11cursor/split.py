@@ -33,7 +33,9 @@ for _p, _u in _PREFIXES.items():
 
 _LAYER = f"{{{INK_NS}}}groupmode"
 _LABEL = f"{{{INK_NS}}}label"
-_DROP = {f"{{{SVG_NS}}}metadata", f"{{{SODI_NS}}}namedview"}
+# Inkscape 0.4x files (e.g. Polar, 2006) use an older URI for the sodipodi namespace than later ones (Obsidian).
+SODI_NS_OLD = "http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd"
+_DROP = {f"{{{SVG_NS}}}metadata", f"{{{SODI_NS}}}namedview", f"{{{SODI_NS_OLD}}}namedview"}
 _KEEP_NON_DRAWABLE = {f"{{{SVG_NS}}}{t}" for t in ("defs", "style", "title", "desc")}
 _LENGTH = re.compile(r"^\s*([0-9]*\.?[0-9]+)\s*(px)?\s*$")
 
