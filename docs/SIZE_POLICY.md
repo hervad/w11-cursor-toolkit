@@ -158,7 +158,7 @@ loader stores that offset in 16 bits. Consequences:
 - Polar today (option B): largest offset 21,772 = 33 % of the limit. Option C (+144): 27,754 = 42 %.
   B + 144 + 160 + 192: 65 %. 13 layers incl. 224/256: 98 % (loads, no margin).
 
-**Enforcement (toolkit `30b23e6`):** `validate` errors when any frame has an image starting past 65,535 and warns above
+**Enforcement (toolkit `6efa805`):** `validate` errors when any frame has an image starting past 65,535 and warns above
 90 % (the margin is for headroom when art changes; the check itself reads the real bytes of every built file).
 Cross-checked against Windows: offsets 61,000 and 65,535 load, 66,000 fails. `ani_budget_bytes` (1 MB) stays as a
 **download-size cap**; the evidence gives no loader reason for a byte budget.
@@ -215,7 +215,7 @@ requested size (no crop, no failure). Only a real image of the requested size is
 therefore doesn't change parsed timing (on-screen timing not measured). Our packer writes anih = first delay anyway.
 
 ### Automatic measurement attempt (Measure-CursorSize.ps1, 2026-10-07, [build 26200.9457], 100 %) - REMOVED
-The script was removed from `scripts/` (toolkit commit `0244c14`); it is in git history at toolkit commit `45124d3`.
+The script was removed from `scripts/` (toolkit commit `233ebcc`); it is in git history at toolkit commit `6952e72`.
 Per-monitor DPI aware (V2, confirmed), probe cursor as Arrow, sliders 1/2/3/4/5/7/9/15 (32…256 px):
 `LoadCursor(IDC_ARROW) → GetIconInfo → GetObject(hbmColor)` = **32×32 for every slider**; `GetCursorInfo` (cursor on
 screen) = 32×32 too; `SM_CXCURSOR` = 32. At slider 9 (160 px) the on-screen cursor happened to be Polar's I-beam:
@@ -231,9 +231,9 @@ a resampled one matches none). Untested.
 ## Current defaults (`w11cursor/sizes.py`) — change only with probe evidence
 | | Sizes | Why |
 |---|---|---|
-| Static | 32 48 64 72 80 96 112 120 128 144 160 168 176 192 200 208 216 224 240 256 | computed in `sizes.py`: every size the bucketed rule can choose (bases 32…256 × 1.0, 1.5 verified; × 2.0, 2.5, 3.0 assumed), cap 256 (toolkit `df59eb8`) |
+| Static | 32 48 64 72 80 96 112 120 128 144 160 168 176 192 200 208 216 224 240 256 | computed in `sizes.py`: every size the bucketed rule can choose (bases 32…256 × 1.0, 1.5 verified; × 2.0, 2.5, 3.0 assumed), cap 256 (toolkit `89ed137`) |
 | Animated | 32 48 64 72 80 96 120 128 144 | option C (2026-10-08): sliders 1-5 + 7 at 100-149 %, 1-5 at 150-199 %; Polar busy.ani ~569 KB, largest image offset ~42 % of the limit |
 | Layer encoding | `layer_format = "png"` (every layer) | ~10–15× smaller than BMP; proven by Capitaine. One format per file - mixing is impossible and rejected by `validate` (ADR-4) |
-| .ani image offset | ≤ 65,535 per frame (error), warn > 90 % | measured loader limit (toolkit `30b23e6`) |
+| .ani image offset | ≤ 65,535 per frame (error), warn > 90 % | measured loader limit (toolkit `6efa805`) |
 | .ani budget | 1,000,000 B | download-size cap only; not a Windows limit (29 MB loads) |
 | .ani `rate` chunk | only when delays differ (`ani_rate = "auto"`), placed after `LIST` | ADR-11; matches Microsoft for uniform delays |
