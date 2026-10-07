@@ -39,7 +39,7 @@ differs — **releases are always the CI build**.
 | `w11cursor build theme.toml --out dist` | Render + pack all variants, write INF, zip |
 | `w11cursor validate theme.toml --dist dist` | Re-read built bytes; fail on wrong sizes/hotspots/order/budget |
 | `w11cursor inspect FILE...` | Dump any `.cur`/`.ani`: layers, formats, hotspots, image offsets, `.ani` chunk layout (also `C:\Windows\Cursors\aero_*`) |
-| `w11cursor preview theme.toml --dist dist` | Draw `docs/preview.png` for the theme README from the built files (exact layers, light + dark panel) |
+| `w11cursor preview theme.toml --dist dist` | Draw `docs/preview.png` for the theme README from the built files (exact layers; light + dark panel, or one row per variant when the variants differ in most cursors) |
 | `w11cursor inspect --lenient FILE...` | Same for files whose directory sizes disagree with their images: reports claimed vs real size instead of failing |
 | `w11cursor probe` | Write the size-probe cursor (each layer shows its own px size) |
 | `w11cursor unpack theme.toml` | Tarball upstreams: check the vendored archive's SHA-256, extract only `[upstream] extract` into a git-ignored folder (also the CI `pre-build`) |

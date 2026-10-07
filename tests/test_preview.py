@@ -3,7 +3,7 @@ import pytest
 from PIL import Image
 
 from w11cursor.pack import CursorImage, pack_ani, pack_cur
-from w11cursor.preview import layer, make_preview, pick
+from w11cursor.preview import layer, layout_for, make_preview, pick
 from w11cursor.roles import ROLES
 
 SIZES = (32, 48, 96)
@@ -74,3 +74,32 @@ def test_cli_preview(dist, tmp_path, monkeypatch):
                         lambda dirs, out, size, scale: calls.update(dirs=dirs, size=size) or out)
     assert cli.main(["preview", str(toml), "--out", str(tmp_path / "p.png")]) == 0
     assert calls == {"dirs": dist, "size": 48}
+
+
+def _shaded(root, name, grey):
+    """A variant whose every cursor differs from the others (all one grey level), pin/person = link."""
+    d = root / name
+    d.mkdir()
+    for i, r in enumerate(ROLES):
+        g = grey + (17 if r.filename in ("pin", "person", "link") else i)   # 17: no clash with any role index
+        if r.filename in ("busy", "working"):
+            frames = [_cur((g, g, g)), _cur((g, g, 0 if r.filename == "busy" else 9))]
+            (d / f"{r.filename}.ani").write_bytes(pack_ani(frames, [3, 3], rate_mode="auto"))
+        else:
+            (d / f"{r.filename}.cur").write_bytes(_cur((g, g, g)))
+    return d
+
+
+def test_mostly_different_variants_get_one_row_each_on_a_contrasting_background(tmp_path):
+    dirs = [_shaded(tmp_path, "dark", 20), _shaded(tmp_path, "light", 220)]
+    assert layout_for(dirs) == "rows"
+    img = Image.open(make_preview(dirs, tmp_path / "p.png"))
+    px, gap, pad = 96, 40, 56
+    assert img.size == (2 * pad + 15 * px + 14 * gap, 2 * (px + 2 * pad))
+    assert img.getpixel((5, img.height // 4))[:3] == (243, 243, 243)        # dark cursors -> light row
+    assert img.getpixel((5, 3 * img.height // 4))[:3] == (32, 32, 32)       # light cursors -> dark row
+    assert img.getpixel((pad + 10, 3 * img.height // 4))[:3] == (220, 220, 220)
+
+
+def test_recoloured_spinner_only_keeps_panels(dist):
+    assert layout_for(dist) == "panels"

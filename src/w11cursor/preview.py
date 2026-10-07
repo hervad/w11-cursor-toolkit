@@ -1,10 +1,11 @@
 """README preview image, drawn from the BUILT cursor files - the exact layers Windows gets, never re-rendered.
 
-Two rounded panels (light and dark background), one row each:
-  - every distinct cursor of the first variant, in Windows role order (byte-identical files such as Pin = Link
-    are shown once; animated cursors show frame 0);
-  - after a thin divider: the files of the other variants that differ from the first variant (for themes whose
-    variants only recolour a few cursors, that is exactly what tells them apart).
+Every row shows a variant's distinct cursors in Windows role order (byte-identical files such as Pin = Link once;
+animated cursors show frame 0). Two layouts, chosen automatically:
+  - "panels" (variants differ in at most half the cursors, e.g. a recoloured spinner): the first variant on a light
+    and on a dark panel, then - after a thin divider - the other variants' files that differ from the first.
+  - "rows" (variants differ in most cursors, e.g. dark/light themes): one row per variant, each on the background
+    that contrasts with it (dark cursors on light, light cursors on dark), like the capitaine preview.
 Icons are the `size * scale` px layer (default 48 px at 2x = the 96 px layer), so the image stays sharp on HiDPI
 screens. A missing layer is an error: a preview must not show a resampled image Windows never draws.
 """
@@ -14,7 +15,7 @@ import io
 import struct
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageStat
 
 from .pack import parse_ani, parse_cur
 from .roles import ROLES
@@ -73,7 +74,38 @@ def pick(variant_dirs: list[Path]) -> tuple[list[Path], list[Path]]:
     return main, extra
 
 
+def _distinct(folder: Path) -> list[Path]:
+    seen: set[bytes] = set()
+    out = []
+    for p in _cursor_files(folder):
+        data = p.read_bytes()
+        if data not in seen:
+            seen.add(data)
+            out.append(p)
+    return out
+
+
+def _background(icons: list[Image.Image]) -> int:
+    """Index into PANELS that contrasts with the icons: their mean opaque luminance < 128 -> light panel."""
+    total = count = 0
+    for icon in icons:
+        lum, alpha = icon.convert("LA").split()
+        mask = alpha.point(lambda v: 255 if v > 127 else 0)
+        n = ImageStat.Stat(mask).sum[0] / 255
+        if n:
+            total += ImageStat.Stat(lum, mask).mean[0] * n
+            count += n
+    return 0 if count == 0 or total / count < 128 else 1
+
+
+def layout_for(variant_dirs: list[Path]) -> str:
+    main, extra = pick(variant_dirs)
+    return "rows" if len(extra) > len(main) // 2 else "panels"
+
+
 def make_preview(variant_dirs: list[Path], out: Path, size: int = 48, scale: int = 2) -> Path:
+    if layout_for(variant_dirs) == "rows":
+        return _make_rows(variant_dirs, out, size, scale)
     main, extra = pick(variant_dirs)
     px, gap, pad, radius = size * scale, 20 * scale, 28 * scale, 16 * scale
     split = 2 * gap if extra else 0                      # extra room around the divider
@@ -96,6 +128,26 @@ def make_preview(variant_dirs: list[Path], out: Path, size: int = 48, scale: int
                 x += split
             canvas.alpha_composite(icon, (x, top + pad))
             x += px + gap
+    out.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(out, optimize=True)
+    return out
+
+
+def _make_rows(variant_dirs: list[Path], out: Path, size: int, scale: int) -> Path:
+    px, gap, pad, radius = size * scale, 20 * scale, 28 * scale, 16 * scale
+    rows = [[layer(p.read_bytes(), px) for p in _distinct(d)] for d in variant_dirs]
+    n = max(len(r) for r in rows)
+    width = 2 * pad + n * px + (n - 1) * gap
+    row_h = px + 2 * pad
+    canvas = Image.new("RGBA", (width, row_h * len(rows)), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+    for row, icons in enumerate(rows):
+        top = row * row_h
+        last = row == len(rows) - 1
+        draw.rounded_rectangle((0, top, width - 1, top + row_h - 1), radius=radius, fill=PANELS[_background(icons)],
+                               corners=(row == 0, row == 0, last, last))
+        for i, icon in enumerate(icons):
+            canvas.alpha_composite(icon, (pad + i * (px + gap), top + pad))
     out.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(out, optimize=True)
     return out
