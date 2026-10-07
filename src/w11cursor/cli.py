@@ -6,12 +6,19 @@
                                                        --lenient: report directory/image mismatches, don't fail)
   w11cursor probe    [--out probe]                 (size-probe cursor, see docs/SIZE_POLICY.md)
   w11cursor unpack   theme.toml                    (verify vendored upstream archive, extract what the build needs)
+  w11cursor preview  theme.toml [--dist dist] [--out docs/preview.png]  (README image from the built files)
 """
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
+
+
+def _variant_dirs(theme_path: Path, dist_dir: Path) -> list[Path]:
+    from .config import load_theme
+
+    return [dist_dir / v.id for v in load_theme(theme_path).variants]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,6 +43,12 @@ def main(argv: list[str] | None = None) -> int:
     u = sub.add_parser("unpack", help="verify the vendored upstream archive (sha256) and extract [upstream] extract")
     u.add_argument("theme", type=Path)
 
+    pv = sub.add_parser("preview", help="draw the README preview image from the built cursor files")
+    pv.add_argument("theme", type=Path)
+    pv.add_argument("--dist", type=Path, default=Path("dist"))
+    pv.add_argument("--out", type=Path, default=Path("docs/preview.png"))
+    pv.add_argument("--size", type=int, default=48, help="icon size in the image, before the 2x HiDPI scale")
+
     p = sub.add_parser("probe", help="write the size-probe cursor")
     p.add_argument("--out", type=Path, default=Path("probe"))
 
@@ -58,6 +71,18 @@ def main(argv: list[str] | None = None) -> int:
         from .probe import make_probe
 
         print(f"wrote {make_probe(a.out)}")
+        return 0
+
+    if a.cmd == "preview":
+        from . import preview
+        from .config import ConfigError
+
+        try:
+            out = preview.make_preview(_variant_dirs(a.theme, a.dist), a.out, size=a.size, scale=2)
+        except (ConfigError, ValueError, OSError) as e:
+            print(f"preview error: {e}", file=sys.stderr)
+            return 5
+        print(f"wrote {out}")
         return 0
 
     from .config import ConfigError, load_theme
