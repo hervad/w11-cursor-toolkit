@@ -104,14 +104,18 @@ Readings by eye: the number the probe cursor showed; `?` would mark a blurry (re
 | 125 % (2026-10-07) | 32 | 48 | 64 | 80 | 96 | 128 | 160 | 256 | **none match** | **all match** |
 | 175 % (2026-10-07) | 48 | 72 | 96 | 120 | 144 | 192 | 240 | 256 | **none match** | **all match** |
 | 125 %, slider 9 again | | | | | | | 160 | | 200 | 160 ✓ |
+| 100 % replication (2026-10-08) | 32 | 48 | 64 | 80 | 96 | 128 | 160 | 256 | all match | all match |
+| 125 % replication ×2 (2026-10-08) | 32 | 48 | 64 | 80 | 96 | 128 | 160 | 256 | **none match** | **all match** |
 
+Replications (2026-10-08) repeated 100 % once and 125 % twice with identical readings; the second 125 % run started
+from a different pointer state (Windows' accessibility pointer at size 160 instead of a 48 px scheme) - same
+readings, restore verified. 49 readings in total, all tagged with the build in `docs/probe-results.csv`.
 100 % baseline: every slider used the layer of exactly 16·(slider+1) px, all crisp. It does not separate the models
 (they agree at 100 %), but shows Windows picks layers Microsoft doesn't ship (80, 160) when they exist.
 125 %: Windows chose the layer of the BASE size (16·(slider+1)) for every slider, although 40/60/100/120/200 px layers
 were in the file -> the exact model is refuted for LAYER CHOICE at 125 %. The maintainer: "not blurry, but the right lower side is
-edgy". Open question - how is that layer displayed? H-a: at its own size (32 px, like 100 %); H-b: stretched to
-base×scale (40 px) with nearest-neighbour (no blur, uneven/jagged edges - fits "edgy"). Test: physical size at 100 % vs
-125 % (ruler), and DXGI pointer shape later. A third model also fits 125 %: layer = base size at ANY scale; the 175 %
+edgy". How that layer is then drawn (at its own size, or stretched to base × scale) is open, not needed - see the
+conclusion. A third model also fits 125 %: layer = base size at ANY scale; the 175 %
 run separates it (slider 1: exact 56, bucketed 48, base-only 32).
 
 **CONCLUSION (2026-10-07): Windows chooses the layer by a BUCKETED rule, not base × exact scale.**
@@ -122,10 +126,9 @@ run separates it (slider 1: exact 56, bucketed 48, base-only 32).
 - **Not verified:** buckets at ≥ 200 % (Layan assumes 2.0 / 2.5 / 3.0; the test display offers at most 175 %); exact bucket
   boundaries between the tested scales (e.g. 140 %, 150 %); what happens above 256 px (175 % slider 15 showed 256,
   the largest layer); other Windows builds; multi-monitor setups with different scales.
-- **Still open (doesn't change which layers to ship):** is the chosen layer drawn at its own size (H-a) or stretched to
-  base × scale with nearest-neighbour (H-b, fits "edgy")? Test: ruler at slider 9, 100 % vs 125 % (about 37 vs 47 mm on a
-  27-inch 2560×1440 screen if stretched - the screen size is an assumption); or the DXGI pointer-shape spike. Either way no layer list can make 125 % crisper,
-  because Windows never picks a base×1.25 layer.
+- **Open, not needed:** whether the chosen layer is drawn at its own size or stretched to base × scale at 125/175 %
+  ("edgy" would fit a nearest-neighbour stretch) is not measured and won't be: no layer list can change it, because
+  Windows never picks a base×1.25 layer, and no README claims crispness at those scales.
 - Consequence: Capitaine's 40/80 layers for 125/250 % are never chosen by this rule (40: never; 80: only as a base
   size or 1.5 bucket). Layan Gold's bucket assumption is confirmed for 100-199 %.
 
@@ -184,6 +187,32 @@ Two side findings:
 - **Files mixing BMP and PNG layers never used their PNG layers** (late_layers, C1), even at offset 70; all-PNG and
   all-BMP files did. 2 of 2 files. **Mixing is now impossible** (ADR-4 update): `layer_format = "png" | "bmp"`
   replaced `png_min_size`, whose 256 setting would have created exactly such files; `validate` rejects mixed files.
+
+### Directory/image size mismatch and anih/rate disagreement (2026-10-08, [build 26200.9457])
+Why: a `.cur`/`.ani` directory entry can state a size its image doesn't have (e.g. "80" for a 96 px image), and
+anih's default rate can disagree with the rate chunk. Measured what Windows does with both (synthetic files only).
+Method: synthetic files, one PNG per entry; the 96 px image is a horizontal red gradient (R = x·255/95, B = 128), so the
+returned bitmap's right-edge red tells shrink (≈255) from crop (≈212). `LoadImage(IMAGE_CURSOR, n)`, `.ani` frame 0 via
+`GetCursorFrameInfo`, then GetIconInfo/GetDIBits. Pointer size set to 32 (restored afterwards, verified).
+
+| File | Request | Windows built | Right-edge red | Meaning |
+|---|---|---|---|---|
+| .cur: 32, "80"→96 px gradient, 128 | 80 | 80×80 | 254 | 96 px image **shrunk** to 80 (resampled) |
+| .cur: 32, 96 px gradient, 128 (no 80 entry) | 80 | 80×80 | 254 | the same - identical to the mislabelled file |
+| .cur: 32, real 80 px (solid), 96, 128 | 80 | 80×80 | flat | the real 80 px layer, unscaled |
+| .ani with the mislabelled / the no-80 frame | 80 | 80×80 | 254 | same as .cur |
+
+**Conclusion:** a mislabelled entry behaves like a missing layer - Windows decodes the real image and resamples it to the
+requested size (no crop, no failure). Only a real image of the requested size is used unscaled.
+
+| .ani | anih rate | rate chunk | Parsed per-step jiffies (GetCursorFrameInfo) |
+|---|---|---|---|
+| A | 1 | 2,2,2,2,2,2 | **2**,2,2,2,2,2 |
+| B | 2 | 1,1,1,1,1,1 | **1**,1,1,1,1,1 |
+| control | 1 | none | 1,1,1,1,1,1 |
+
+**Conclusion:** when a rate chunk exists, it wins; anih's default is used only without one. An anih/rate disagreement
+therefore doesn't change parsed timing (on-screen timing not measured). Our packer writes anih = first delay anyway.
 
 ### Automatic measurement attempt (Measure-CursorSize.ps1, 2026-10-07, [build 26200.9457], 100 %) - REMOVED
 The script was removed from `scripts/` (toolkit commit `0244c14`); it is in git history at toolkit commit `45124d3`.

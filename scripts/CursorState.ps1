@@ -132,3 +132,14 @@ function ConvertTo-ScalePercent([string]$Text) {
   if ([int]::TryParse($t, [ref]$n) -and $n -ge 100 -and $n -le 500) { return $n }
   return $null
 }
+
+function Add-ProbeRows($Rows, [string]$Path) {
+  # Export-Csv -Append silently keeps an existing file's header and DROPS any new column (e.g. os_build).
+  # So migrate an old-format file first: old rows get os_build = 'unknown' (their build can't be claimed).
+  if ((Test-Path $Path) -and -not ((Get-Content $Path -TotalCount 1) -match '"os_build"')) {
+    $old = @(Import-Csv $Path | Select-Object *, @{ n = 'os_build'; e = { 'unknown' } })
+    $old | Export-Csv -NoTypeInformation $Path
+    Write-Host "  migrated $($old.Count) existing row(s) in $Path to the os_build format (marked 'unknown')"
+  }
+  $Rows | Export-Csv -Append -NoTypeInformation $Path
+}

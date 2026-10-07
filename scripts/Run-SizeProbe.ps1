@@ -55,5 +55,5 @@ try {
   Restore-CursorState $state
 }
 $rows | Format-Table
-$rows | Export-Csv -Append -NoTypeInformation probe-results.csv
+Add-ProbeRows $rows (Join-Path (Get-Location) 'probe-results.csv')
 Write-Host "Appended $($rows.Count) row(s) to $(Join-Path (Get-Location) 'probe-results.csv')"

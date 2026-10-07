@@ -14,7 +14,7 @@ from pathlib import Path
 from . import sizes as S
 from .config import LICENSE_TEXT_FILES, NOTICE_FILES, Theme, Variant
 from .hotspot import scale_hotspot
-from .pack import parse_ani, parse_cur
+from .pack import parse_ani, parse_cur, parse_cur_lenient
 from .roles import ROLES
 
 
@@ -149,9 +149,49 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
     return rep
 
 
-def describe(path: Path) -> str:
-    """Human-readable dump of any .cur/.ani - use it on other people's ports too."""
+def _lenient_rows(entries) -> list[str]:
+    rows = ["   #  claimed  real      fmt  hotspot      bytes      starts at"]
+    for i, e in enumerate(entries):
+        real = f"{e.real[0]}x{e.real[1]}" if e.real else "?"
+        note = f"  MISMATCH: directory says {e.claimed}, image is {real}" if e.mismatch else ""
+        rows.append(f"  {i:>2}  {e.claimed:>5}px  {real:<9} {e.fmt}  {str(e.hotspot):<10} {e.nbytes:>8,} B  @{e.offset:>9,}{note}")
+    return rows
+
+
+def _describe_lenient(path: Path, blob: bytes) -> str:
+    lines = [f"{path}  ({len(blob):,} bytes)  [lenient: directory claims vs real image sizes]"]
+    if blob[:4] != b"RIFF":
+        entries = parse_cur_lenient(blob)
+        lines += _lenient_rows(entries)
+        bad = sum(e.mismatch for e in entries)
+        lines.append(f"  {bad} of {len(entries)} entries claim a size their image doesn't have" if bad else "  directory matches every image")
+        return "\n".join(lines)
+    info = parse_ani(blob)
+    lines.append(f"  type: .ani  chunk order: {' -> '.join(info.chunk_order)}")
+    lines.append(f"  frames: {info.n_frames}  steps: {info.n_steps}  default rate: {info.default_rate} jiffies  flags: {info.flags:#x}")
+    if info.rates:
+        lines.append(f"  rate: {info.rates[:12]}{' ...' if len(info.rates) > 12 else ''}")
+        if info.rates[0] != info.default_rate:
+            lines.append(f"  NOTE: anih default rate {info.default_rate} differs from the rate chunk ({info.rates[0]}); "
+                         "Windows uses the rate chunk (docs/SIZE_POLICY.md, measured)")
+    frames = [parse_cur_lenient(fr) for fr in info.frames]
+    if frames:
+        lines.append("  frame 0:")
+        lines += ["  " + r for r in _lenient_rows(frames[0])]
+        total = sum(len(f) for f in frames)
+        bad = sum(e.mismatch for f in frames for e in f)
+        reals = sorted({e.real[0] for f in frames for e in f if e.real})
+        lines.append(f"  all frames: {bad} of {total} entries mismatched; distinct real image sizes: {reals}")
+        lines.append(f"  largest image offset in any frame: {max(max(e.offset for e in f) for f in frames):,} (loader limit 65,535)")
+    return "\n".join(lines)
+
+
+def describe(path: Path, lenient: bool = False) -> str:
+    """Human-readable dump of any .cur/.ani - use it on other people's ports too.
+    lenient=True reports directory/image disagreements instead of failing (for third-party files)."""
     blob = path.read_bytes()
+    if lenient:
+        return _describe_lenient(path, blob)
     lines = [f"{path}  ({len(blob):,} bytes)"]
     if blob[:4] == b"RIFF":
         info = parse_ani(blob)

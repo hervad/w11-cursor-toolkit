@@ -98,6 +98,44 @@ def pack_cur(images: list[CursorImage], layer_format: str = LAYER_FORMAT) -> byt
     return out_header + bytes(entries) + bytes(data)
 
 
+@dataclass(frozen=True)
+class RawEntry:
+    """One directory entry as STORED (for inspecting other people's files): the size the directory claims and the
+    size the image itself has. parse_cur() rejects such files; parse_cur_lenient() reports them."""
+    claimed: int                        # size written in the directory (0 -> 256)
+    real: tuple[int, int] | None        # (w, h) from the image's own header; None if unreadable
+    fmt: str                            # "png" | "bmp" | "?"
+    hotspot: tuple[int, int]
+    nbytes: int
+    offset: int
+
+    @property
+    def mismatch(self) -> bool:
+        return self.real is not None and self.real != (self.claimed, self.claimed)
+
+
+def parse_cur_lenient(blob: bytes) -> list[RawEntry]:
+    """Like parse_cur, but never fails on directory/image disagreements - it reports them. Not for validation."""
+    if len(blob) < 6:
+        raise ValueError("file too short")
+    count = struct.unpack_from("<H", blob, 4)[0]
+    out: list[RawEntry] = []
+    for i in range(count):
+        off = 6 + 16 * i
+        if off + 16 > len(blob):
+            raise ValueError("truncated directory")
+        w, _h, _c, _r, hx, hy, nbytes, doff = struct.unpack_from("<BBBBHHII", blob, off)
+        payload = blob[doff:doff + nbytes] if doff + nbytes <= len(blob) else b""
+        real, fmt = None, "?"
+        if payload[:8] == PNG_SIG and len(payload) >= 24:
+            fmt, real = "png", struct.unpack_from(">II", payload, 16)
+        elif len(payload) >= 12:
+            _sz, pw, ph2 = struct.unpack_from("<Iii", payload, 0)
+            fmt, real = "bmp", (pw, ph2 // 2)
+        out.append(RawEntry(claimed=w or 256, real=real, fmt=fmt, hotspot=(hx, hy), nbytes=nbytes, offset=doff))
+    return out
+
+
 def parse_cur(blob: bytes) -> list[CurEntry]:
     """Parse a .cur and return its layers. Raises ValueError on malformed data."""
     if len(blob) < 6:

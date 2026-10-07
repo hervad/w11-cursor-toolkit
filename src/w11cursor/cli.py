@@ -2,7 +2,8 @@
 
   w11cursor build    theme.toml [--out dist] [--variant ID ...]
   w11cursor validate theme.toml [--dist dist] [--variant ID ...]
-  w11cursor inspect  FILE.cur|FILE.ani ...        (works on any cursor, incl. other ports / C:\\Windows\\Cursors)
+  w11cursor inspect  [--lenient] FILE.cur|FILE.ani ...  (any cursor, incl. other ports / C:\\Windows\\Cursors;
+                                                       --lenient: report directory/image mismatches, don't fail)
   w11cursor probe    [--out probe]                 (size-probe cursor, see docs/SIZE_POLICY.md)
   w11cursor unpack   theme.toml                    (verify vendored upstream archive, extract what the build needs)
 """
@@ -29,6 +30,8 @@ def main(argv: list[str] | None = None) -> int:
 
     i = sub.add_parser("inspect", help="dump layers/hotspots/chunk order of .cur/.ani files")
     i.add_argument("files", type=Path, nargs="+")
+    i.add_argument("--lenient", action="store_true",
+                   help="report directory sizes that disagree with the real image instead of failing (third-party files)")
 
     u = sub.add_parser("unpack", help="verify the vendored upstream archive (sha256) and extract [upstream] extract")
     u.add_argument("theme", type=Path)
@@ -44,9 +47,10 @@ def main(argv: list[str] | None = None) -> int:
         rc = 0
         for f in a.files:
             try:
-                print(describe(f))
+                print(describe(f, lenient=a.lenient))
             except (ValueError, OSError) as e:
-                print(f"{f}: ERROR {e}")
+                hint = "" if a.lenient else "  (try: w11cursor inspect --lenient)"
+                print(f"{f}: ERROR {e}{hint}")
                 rc = 1
         return rc
 
