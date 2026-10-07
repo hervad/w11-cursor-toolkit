@@ -1,10 +1,15 @@
 """SVG -> RGBA renderers. Imported lazily so `w11cursor inspect` works on a
-Windows box that has no native cairo installed."""
+Windows box that has no native cairo installed.
+
+Every render goes through ONE pipeline: read -> recolour -> guard.check_svg -> backend.
+Backends only ever receive SVG text that passed the guard."""
 from __future__ import annotations
 
 from pathlib import Path
 
 from PIL import Image
+
+from .guard import check_svg
 
 RENDERERS = ("cairosvg", "resvg")
 
@@ -23,4 +28,11 @@ def render_svg(path: Path, size: int, recolor: dict[str, str] | None = None, ren
         from .resvg_backend import render
     else:
         raise ValueError(f"unknown renderer '{renderer}'; valid: {', '.join(RENDERERS)}")
-    return render(path, size, recolor or {})
+    if not path.exists():
+        raise FileNotFoundError(f"SVG not found: {path}")
+    svg = apply_recolor(path.read_text(encoding="utf-8"), recolor or {})
+    check_svg(svg, path.name)
+    img = render(svg, size)
+    if img.size != (size, size):
+        raise ValueError(f"{path.name}: rendered {img.size}, expected {size}x{size} - is the viewBox square?")
+    return img

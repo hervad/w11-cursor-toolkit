@@ -55,7 +55,7 @@ def ensure_windows_cairo_path(env: dict = os.environ, is_windows: bool = os.name
     return None
 
 
-def render(path: Path, size: int, recolor: dict[str, str]) -> Image.Image:
+def render(svg: str, size: int) -> Image.Image:
     ensure_windows_cairo_path()
     try:
         import cairosvg  # needs the native cairo library
@@ -69,13 +69,7 @@ def render(path: Path, size: int, recolor: dict[str, str]) -> Image.Image:
             f"  original error: {exc}"
         ) from exc
 
-    if not path.exists():
-        raise FileNotFoundError(f"SVG not found: {path}")
-    from . import apply_recolor
-
-    svg = apply_recolor(path.read_text(encoding="utf-8"), recolor)
+    # svg already passed guard.check_svg() in render_svg(); cairosvg's own safe mode (default since 2.7)
+    # is a second line of defence - never pass unsafe=True.
     png = cairosvg.svg2png(bytestring=svg.encode("utf-8"), output_width=size, output_height=size)
-    img = Image.open(io.BytesIO(png)).convert("RGBA")
-    if img.size != (size, size):
-        raise ValueError(f"{path.name}: rendered {img.size}, expected {size}x{size} - is the viewBox square?")
-    return img
+    return Image.open(io.BytesIO(png)).convert("RGBA")

@@ -51,34 +51,61 @@ def test_recolor_is_the_same_for_every_backend(tmp_path, renderer):
     assert img.getpixel((16, 16)) == (0, 255, 0, 255)
 
 
-def _svg_with_image(href: str) -> str:
-    return ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-            f'width="8" height="8"><image width="8" height="8" xlink:href="{href}"/></svg>')
+BOTH = ["resvg", pytest.param("cairosvg", marks=needs_cairo)]
+XLINK = 'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="8" height="8"'
 
 
-def test_resvg_rejects_external_image(tmp_path):
-    # resvg would load this file by absolute path even without resources_dir (verified 2026-10-07).
-    Image.new("RGBA", (8, 8), (0, 255, 0, 255)).save(tmp_path / "x.png")
-    p = tmp_path / "ext.svg"
-    p.write_text(_svg_with_image((tmp_path / "x.png").as_posix()))
-    with pytest.raises(ValueError, match="external file"):
-        render_svg(p, 8, renderer="resvg")
-
-
-def test_resvg_allows_embedded_data_image(tmp_path):
+def _png_bytes() -> bytes:
     buf = io.BytesIO()
     Image.new("RGBA", (8, 8), (0, 255, 0, 255)).save(buf, "PNG")
-    p = tmp_path / "embedded.svg"
-    p.write_text(_svg_with_image("data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()))
-    assert render_svg(p, 8, renderer="resvg").getpixel((4, 4)) == (0, 255, 0, 255)
+    return buf.getvalue()
 
 
-def test_resvg_rejects_text(tmp_path):
-    # System fonts are skipped for reproducibility, so <text> would silently vanish.
-    p = tmp_path / "text.svg"
-    p.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><text y="20">A</text></svg>')
-    with pytest.raises(ValueError, match="convert text to paths"):
-        render_svg(p, 32, renderer="resvg")
+def _render(tmp_path, body: str, renderer: str):
+    p = tmp_path / "t.svg"
+    p.write_text(f"<svg {XLINK}>{body}</svg>")
+    return render_svg(p, 8, renderer=renderer)
+
+
+def _external_cases(tmp_path):
+    (tmp_path / "x.png").write_bytes(_png_bytes())
+    ext = (tmp_path / "x.png").as_posix()  # resvg WOULD load this (verified 2026-10-07)
+    return {
+        "xlink:href image, absolute path": (f'<image width="8" height="8" xlink:href="{ext}"/>', "external reference"),
+        "xlink:href image, file:// URI": (f'<image width="8" height="8" xlink:href="file:///{ext}"/>', "external reference"),
+        "SVG2 href on <use>, other file": ('<use href="other.svg#shape"/>', "external reference"),
+        "xlink:href, http URL": ('<image width="8" height="8" xlink:href="https://example.com/x.png"/>', "external reference"),
+        "style attribute url()": ('<rect width="8" height="8" style="fill:url(other.svg#g)"/>', "external CSS url"),
+        "presentation attribute url()": ("<rect width=\"8\" height=\"8\" fill=\"url('pattern.svg#p')\"/>", "external CSS url"),
+        "<style> url()": ('<style>rect { fill: url("https://example.com/p.svg#p") }</style><rect width="8" height="8"/>',
+                          "external CSS url"),
+        "<style> @import": ('<style>@import "evil.css";</style><rect width="8" height="8"/>', "@import"),
+        "<text>": ('<text y="8">A</text>', "convert text to paths"),
+    }
+
+
+CASES = ["xlink:href image, absolute path", "xlink:href image, file:// URI", "SVG2 href on <use>, other file",
+         "xlink:href, http URL", "style attribute url()", "presentation attribute url()", "<style> url()",
+         "<style> @import", "<text>"]
+
+
+@pytest.mark.parametrize("renderer", BOTH)
+@pytest.mark.parametrize("case", CASES)
+def test_guard_rejects(tmp_path, renderer, case):
+    body, message = _external_cases(tmp_path)[case]
+    with pytest.raises(ValueError, match=message):
+        _render(tmp_path, body, renderer)
+
+
+@pytest.mark.parametrize("renderer", BOTH)
+def test_guard_allows_same_document_and_data_references(tmp_path, renderer):
+    data = "data:image/png;base64," + base64.b64encode(_png_bytes()).decode()
+    body = ('<defs><linearGradient id="g"><stop offset="0" stop-color="#00FF00"/></linearGradient>'
+            '<rect id="r" width="4" height="8"/></defs>'
+            '<use xlink:href="#r" style="fill:url(#g)"/>'                      # internal href + internal url()
+            f'<image x="4" width="4" height="8" xlink:href="{data}"/>')        # embedded image
+    img = _render(tmp_path, body, renderer)
+    assert img.getpixel((1, 4)) == (0, 255, 0, 255) and img.getpixel((6, 4)) == (0, 255, 0, 255)
 
 
 def test_unknown_renderer_is_an_error(tmp_path):
