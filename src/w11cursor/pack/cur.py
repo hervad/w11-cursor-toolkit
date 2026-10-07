@@ -38,6 +38,7 @@ class CurEntry:
     hotspot: tuple[int, int]
     fmt: str                    # "png" | "bmp"
     nbytes: int
+    offset: int = 0             # where the image data starts in the .cur (an .ani frame must keep every one <= 65,535)
 
 
 def _bmp_payload(img: Image.Image) -> bytes:
@@ -120,5 +121,5 @@ def parse_cur(blob: bytes) -> list[CurEntry]:
             ph = ph2 // 2
         if (pw, ph) != (w, h):
             raise ValueError(f"entry {i}: directory says {w}x{h}, image is {pw}x{ph}")
-        out.append(CurEntry(size=w, hotspot=(hx, hy), fmt=fmt, nbytes=nbytes))
+        out.append(CurEntry(size=w, hotspot=(hx, hy), fmt=fmt, nbytes=nbytes, offset=doff))
     return out

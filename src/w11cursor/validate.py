@@ -11,6 +11,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import sizes as S
 from .config import LICENSE_TEXT_FILES, NOTICE_FILES, Theme, Variant
 from .hotspot import scale_hotspot
 from .pack import parse_ani, parse_cur
@@ -40,6 +41,24 @@ def _check_cur(blob: bytes, sizes, spec, canvas, mode, where, rep: Report):
         want = scale_hotspot(spec.hotspot, canvas, e.size, mode)
         if e.hotspot != want:
             rep.errors.append(f"{where}@{e.size}: hotspot {e.hotspot} != expected {want}")
+
+
+def _check_ani_offsets(info, where: str, rep: Report):
+    """Windows' .ani loader rejects a frame if any image starts past byte 65,535 of that frame (measured)."""
+    worst, frame = 0, 0
+    for i, fr in enumerate(info.frames):
+        try:
+            m = max(e.offset for e in parse_cur(fr))
+        except ValueError:
+            continue  # reported by _check_cur
+        if m > worst:
+            worst, frame = m, i
+    if worst > S.ANI_MAX_IMAGE_OFFSET:
+        rep.errors.append(f"{where}#frame{frame}: an image starts at byte {worst:,} > {S.ANI_MAX_IMAGE_OFFSET:,} - "
+                          "Windows refuses such frames; drop or shrink layers below the largest")
+    elif worst > S.ANI_OFFSET_WARN_FRACTION * S.ANI_MAX_IMAGE_OFFSET:
+        rep.warnings.append(f"{where}#frame{frame}: largest image offset {worst:,} is "
+                            f"{worst / S.ANI_MAX_IMAGE_OFFSET:.0%} of the {S.ANI_MAX_IMAGE_OFFSET:,} loader limit")
 
 
 def _check_notices(theme: Theme, v: Variant, folder: Path, rep: Report):
@@ -105,7 +124,8 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
             if info.default_rate != want_delays[0]:
                 rep.errors.append(f"{where}: anih default rate {info.default_rate} != {want_delays[0]}")
             if len(blob) > theme.ani_budget:
-                rep.errors.append(f"{where}: {len(blob):,} B exceeds .ani budget {theme.ani_budget:,} B")
+                rep.errors.append(f"{where}: {len(blob):,} B exceeds .ani download budget {theme.ani_budget:,} B")
+            _check_ani_offsets(info, where, rep)
             for i, fr in enumerate(info.frames):
                 _check_cur(fr, theme.animated_sizes, spec, canvas, theme.hotspot_mode, f"{where}#frame{i}", rep)
         _check_notices(theme, v, folder, rep)

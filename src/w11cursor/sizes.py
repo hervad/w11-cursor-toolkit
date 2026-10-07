@@ -29,7 +29,14 @@ STATIC_SIZES: tuple[int, ...] = choosable_sizes()
 # Polar busy.ani = 456 KB. Every size here is choosable (tests/test_sizes.py).
 ANIMATED_SIZES: tuple[int, ...] = (32, 48, 64, 72, 80, 96, 120, 128)
 
-# Hard CI budget per .ani file (bytes). Empirical, not a documented Microsoft limit.
+# .ani loader limit (MEASURED 2026-10-07, docs/SIZE_POLICY.md ".ani size-limit experiment"): inside every frame,
+# each image must START at byte <= 65,535 of that frame (65,535 loads, 65,536 fails - consistent with a 16-bit
+# offset). Total file size is NOT limited by the loader (a 29 MB .ani loaded). Frames are written smallest layer
+# first, so only the biggest layer may extend past 64 KiB. validate: error above the limit, warning above 90 %.
+ANI_MAX_IMAGE_OFFSET = 65_535
+ANI_OFFSET_WARN_FRACTION = 0.90
+
+# Download-size cap per .ani file (bytes). NOT a Windows limit (see above); keeps zips reasonable.
 ANI_BUDGET_BYTES = 1_000_000
 
 # Layers at or above this size are stored PNG-compressed inside .cur; smaller ones

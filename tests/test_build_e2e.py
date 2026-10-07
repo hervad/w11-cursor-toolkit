@@ -86,3 +86,47 @@ def test_missing_licence_text_fails(tmp_path):
     rep = validate_theme(theme, dist, only=["light"])
     assert any(e.startswith("light/: neither LICENSE nor COPYING") for e in rep.errors)
     assert any(e.startswith(f"{zp.name}: neither LICENSE nor COPYING") for e in rep.errors)
+
+
+def _pad_first_image(frame: bytes, extra: int) -> bytes:
+    """Same .cur, but the first PNG grows by `extra` bytes (private 'prVt' chunk), pushing later images back."""
+    import struct
+    import zlib
+
+    n = struct.unpack_from("<H", frame, 4)[0]
+    dirs = [list(struct.unpack_from("<BBBBHHII", frame, 6 + 16 * i)) for i in range(n)]
+    datas = [frame[d[7]:d[7] + d[6]] for d in dirs]
+    first = datas[0]
+    iend = first.rindex(b"IEND") - 4
+    body = b"\0" * (extra - 12)
+    chunk = struct.pack(">I", len(body)) + b"prVt" + body + struct.pack(">I", zlib.crc32(b"prVt" + body) & 0xFFFFFFFF)
+    datas[0] = first[:iend] + chunk + first[iend:]
+    off, out = 6 + 16 * n, b""
+    for d, data in zip(dirs, datas):
+        d[6], d[7] = len(data), off
+        out += struct.pack("<BBBBHHII", *d)
+        off += len(data)
+    return frame[:6] + out + b"".join(datas)
+
+
+def test_validator_enforces_ani_image_offset_limit(tmp_path):
+    from w11cursor.pack import pack_ani, parse_ani, parse_cur
+
+    theme = load_theme(DEMO)
+    build_theme(theme, tmp_path, only=["light"], log=lambda *_: None)
+    busy = tmp_path / "light" / "busy.ani"
+    frames = parse_ani(busy.read_bytes()).frames
+    now = max(e.offset for e in parse_cur(frames[0]))                  # bytes before the last image today
+
+    near = [_pad_first_image(frames[0], 61_000 - now)] + frames[1:]     # 93 % of the limit -> warning only
+    assert 0.9 * 65_535 < max(e.offset for e in parse_cur(near[0])) <= 65_535
+    busy.write_bytes(pack_ani(near, 4, theme.ani_order))
+    rep = validate_theme(theme, tmp_path, only=["light"])
+    assert rep.ok, rep.errors
+    assert any("busy.ani#frame0: largest image offset" in w for w in rep.warnings)
+
+    over = [_pad_first_image(frames[0], 66_000 - now)] + frames[1:]    # past 65,535 -> Windows refuses it
+    assert max(e.offset for e in parse_cur(over[0])) > 65_535
+    busy.write_bytes(pack_ani(over, 4, theme.ani_order))
+    rep = validate_theme(theme, tmp_path, only=["light"])
+    assert any(e.startswith("light/busy.ani#frame0: an image starts at byte 66,000") for e in rep.errors), rep.errors
