@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Self-drawn test fixture (MIT): a tiny Inkscape-style master. 16x16, deliberately NO viewBox. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" width="16" height="16">
+  <defs>
+    <linearGradient id="gA"><stop offset="0" stop-color="#FF0000"/><stop offset="1" stop-color="#FF0000"/></linearGradient>
+  </defs>
+  <sodipodi:namedview id="nv" pagecolor="#ffffff"/>
+  <metadata id="md"/>
+  <g inkscape:groupmode="layer" inkscape:label="A" id="layerA">
+    <rect x="0" y="0" width="8" height="8" fill="url(#gA)"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="B" id="layerB" style="display:none">
+    <rect x="4" y="4" width="8" height="8" fill="#0000FF"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="T" id="layerT" style="display:none">
+    <text x="0" y="12">?</text>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="S" id="layerS" style="display:none">
+    <circle cx="8" cy="8" r="7" fill="#808080"/>
+    <g id="bar"><rect x="7" y="2" width="2" height="12" fill="#00FF00"/></g>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="U" id="layerU" style="display:none">
+    <!-- bar in its OWN coordinates x 3..5; the group's existing transform moves it to x 7..9 (above centre 8,8) -->
+    <g id="moved" transform="translate(4 0)"><rect x="3" y="2" width="2" height="6" fill="#00FF00"/></g>
+  </g>
+</svg>

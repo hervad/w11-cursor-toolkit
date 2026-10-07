@@ -36,10 +36,15 @@ class CursorSpec:
     hotspot: tuple[float, float] = (0.0, 0.0)
     design_canvas: int | None = None   # per-cursor override
     same_as: str | None = None
+    # --- cursors cut from ONE Inkscape master ([source] master), see split.py / ADR-13
+    layers: list[str] | None = None    # inkscape:label of top-level layers to keep
+    transform: str | None = None       # SVG transform around the kept layers
+    rotate: dict | None = None         # {id, center=[cx, cy] (parent coords), step_deg} -> animated
+    master: str | None = None          # per-cursor master instead of [source] master
 
     @property
     def animated(self) -> bool:
-        return self.frames is not None
+        return self.frames is not None or self.rotate is not None
 
 
 @dataclass
@@ -71,6 +76,7 @@ class Theme:
     png_min_size: int
     variants: list[Variant]
     cursors: dict[str, CursorSpec]
+    master: Path | None = None         # [source] master (absolute)
 
     def resolve(self, key: str) -> CursorSpec:
         """Follow same_as links (pin -> link etc.)."""
@@ -93,6 +99,9 @@ class Theme:
             return common
         return variant.svg_dir / name
 
+    def master_for(self, spec: CursorSpec) -> Path:
+        return (self.root / spec.master).resolve() if spec.master else self.master
+
     def canvas_for(self, spec: CursorSpec) -> int:
         return spec.design_canvas or self.design_canvas
 
@@ -114,14 +123,22 @@ def load_theme(path: str | Path) -> Theme:
     t = _req(data, "theme", "root")
     r = data.get("render", {})
     sz = data.get("sizes", {})
+    src = data.get("source", {})
+    master = (root / src["master"]).resolve() if "master" in src else None
 
     variants = []
     for v in _req(data, "variants", "root"):
+        if "svg_dir" in v:
+            svg_dir = (root / v["svg_dir"]).resolve()
+        elif master:
+            svg_dir = root   # master-based theme: no per-cursor SVG folder needed
+        else:
+            raise ConfigError("missing 'svg_dir' in [variants]")
         variants.append(
             Variant(
                 id=_req(v, "id", "variants"),
                 scheme_name=_req(v, "scheme_name", "variants"),
-                svg_dir=(root / _req(v, "svg_dir", "variants")).resolve(),
+                svg_dir=svg_dir,
                 recolor=dict(v.get("recolor", {})),
             )
         )
@@ -142,10 +159,30 @@ def load_theme(path: str | Path) -> Theme:
             hotspot=tuple(c.get("hotspot", (0, 0))),
             design_canvas=c.get("design_canvas"),
             same_as=c.get("same_as"),
+            layers=list(c["layers"]) if "layers" in c else None,
+            transform=c.get("transform"),
+            rotate=dict(c["rotate"]) if "rotate" in c else None,
+            master=c.get("master"),
         )
-        kinds = sum(x is not None for x in (spec.svg, spec.frames, spec.same_as))
+        kinds = sum(x is not None for x in (spec.svg, spec.frames, spec.same_as, spec.layers))
         if kinds != 1:
-            raise ConfigError(f"[cursors.{key}] needs exactly one of svg / frames / same_as")
+            raise ConfigError(f"[cursors.{key}] needs exactly one of svg / frames / same_as / layers")
+        if spec.layers is not None:
+            if not spec.layers or not all(isinstance(l, str) for l in spec.layers):
+                raise ConfigError(f"[cursors.{key}] layers must be a non-empty list of layer labels")
+            if not (spec.master or master):
+                raise ConfigError(f"[cursors.{key}] layers needs [source] master (or a per-cursor master)")
+        elif spec.transform or spec.rotate or spec.master:
+            raise ConfigError(f"[cursors.{key}] transform / rotate / master only work together with layers")
+        if spec.rotate is not None:
+            rot = spec.rotate
+            ok = (isinstance(rot.get("id"), str) and isinstance(rot.get("center"), list) and len(rot["center"]) == 2
+                  and all(isinstance(v_, (int, float)) for v_ in rot["center"]) and isinstance(rot.get("step_deg"), (int, float))
+                  and set(rot) <= {"id", "center", "step_deg"})
+            if not ok:
+                raise ConfigError(f"[cursors.{key}] rotate = {{ id = \"...\", center = [cx, cy], step_deg = n }}")
+            if spec.frame_count < 1:
+                raise ConfigError(f"[cursors.{key}] rotate needs frame_count >= 1")
         if spec.frames and spec.frame_count < 1:
             raise ConfigError(f"[cursors.{key}] animated cursor needs frame_count >= 1")
         cursors[key] = spec
@@ -179,6 +216,7 @@ def load_theme(path: str | Path) -> Theme:
         png_min_size=int(sz.get("png_min_size", S.PNG_MIN_SIZE)),
         variants=variants,
         cursors=cursors,
+        master=master,
     )
     for k in cursors:
         theme.resolve(k)  # detect same_as loops early

@@ -21,18 +21,26 @@ def apply_recolor(svg: str, recolor: dict[str, str]) -> str:
     return svg
 
 
-def render_svg(path: Path, size: int, recolor: dict[str, str] | None = None, renderer: str = "cairosvg") -> Image.Image:
+def render_svg_text(svg: str, name: str, size: int, recolor: dict[str, str] | None = None,
+                    renderer: str = "cairosvg") -> Image.Image:
+    """SVG text (e.g. a cursor cut from a master by split.py) -> RGBA. `name` is only for messages."""
     if renderer == "cairosvg":
         from .cairo_backend import render
     elif renderer == "resvg":
         from .resvg_backend import render
     else:
         raise ValueError(f"unknown renderer '{renderer}'; valid: {', '.join(RENDERERS)}")
-    if not path.exists():
-        raise FileNotFoundError(f"SVG not found: {path}")
-    svg = apply_recolor(path.read_text(encoding="utf-8"), recolor or {})
-    check_svg(svg, path.name)
+    svg = apply_recolor(svg, recolor or {})
+    check_svg(svg, name)
     img = render(svg, size)
     if img.size != (size, size):
-        raise ValueError(f"{path.name}: rendered {img.size}, expected {size}x{size} - is the viewBox square?")
+        raise ValueError(f"{name}: rendered {img.size}, expected {size}x{size} - is the viewBox square?")
     return img
+
+
+def render_svg(path: Path, size: int, recolor: dict[str, str] | None = None, renderer: str = "cairosvg") -> Image.Image:
+    if renderer not in RENDERERS:
+        raise ValueError(f"unknown renderer '{renderer}'; valid: {', '.join(RENDERERS)}")
+    if not path.exists():
+        raise FileNotFoundError(f"SVG not found: {path}")
+    return render_svg_text(path.read_text(encoding="utf-8"), path.name, size, recolor, renderer)
