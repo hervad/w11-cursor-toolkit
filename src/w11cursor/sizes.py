@@ -44,8 +44,9 @@ ANI_BUDGET_BYTES = 1_000_000
 #   * BMP is ~10-15x larger (15 BMP layers = ~800 KB per .cur, an 8-frame .ani > 1.3 MB)
 #   * capitaine-cursors-w11-hidpi already ships PNG layers at all sizes and they load
 #     on Windows 11 (its 7-layer .ani files are ~545 KB, only possible with PNG frames).
-# Set [sizes] png_min_size = 256 in theme.toml to fall back to BMP below 256 if the
-# Windows load test ever rejects a PNG layer.
+# WARNING (measured 2026-10-08, docs/SIZE_POLICY.md "Static .cur"): in .cur files that MIX BMP and PNG layers,
+# Windows never used the PNG layers (2 of 2 files). png_min_size = 256 creates exactly such files (BMP below 256,
+# PNG at 256), so don't use it as a fallback without a pixel test. All-PNG (1) and all-BMP (> 256) are fine.
 PNG_MIN_SIZE = 1
 
 # Top-level RIFF chunk order for .ani. The order below is the one that fixed the
