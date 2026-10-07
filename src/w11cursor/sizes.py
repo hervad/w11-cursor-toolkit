@@ -9,7 +9,8 @@ NOT base x exact scale: at 125 % / 175 % Windows ignored the 40/56/... layers th
 If the chosen layer is missing, Windows resamples another one -> blur. So we ship exactly the choosable layers.
 
 * Static cursors are cheap (Windows decodes only the layer it picks): ship every choosable size <= 256.
-* Animated cursors are capped by the legacy .ani loader's size limit (ANI_BUDGET_BYTES): a subset.
+* Animated cursors carry a subset: the .ani loader rejects frames whose images start past byte 65,535
+  (ANI_MAX_IMAGE_OFFSET, measured); ANI_BUDGET_BYTES is only a download-size cap per file.
 """
 SLIDER_BASES: tuple[int, ...] = tuple(16 * (s + 1) for s in range(1, 16))      # 32 .. 256
 VERIFIED_BUCKETS: tuple[float, ...] = (1.0, 1.5)
