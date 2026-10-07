@@ -40,6 +40,7 @@ differs — **releases are always the CI build**.
 | `w11cursor validate theme.toml --dist dist` | Re-read built bytes; fail on wrong sizes/hotspots/order/budget |
 | `w11cursor inspect FILE...` | Dump any `.cur`/`.ani` (use on other ports and `C:\Windows\Cursors\aero_*`) |
 | `w11cursor probe` | Write the size-probe cursor (each layer shows its own px size) |
+| `w11cursor unpack theme.toml` | Tarball upstreams: check the vendored archive's SHA-256, extract only `[upstream] extract` into a git-ignored folder (also the CI `pre-build`) |
 
 Windows-only helpers in `scripts/`: `Test-LoadCursors.ps1` (loads every layer through the
 real user32 loader — used by CI), `Get-AniFrameTiming.ps1` (per-step `.ani` delays as user32 parsed

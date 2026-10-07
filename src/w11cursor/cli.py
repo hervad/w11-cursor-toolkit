@@ -4,6 +4,7 @@
   w11cursor validate theme.toml [--dist dist] [--variant ID ...]
   w11cursor inspect  FILE.cur|FILE.ani ...        (works on any cursor, incl. other ports / C:\\Windows\\Cursors)
   w11cursor probe    [--out probe]                 (size-probe cursor, see docs/SIZE_POLICY.md)
+  w11cursor unpack   theme.toml                    (verify vendored upstream archive, extract what the build needs)
 """
 from __future__ import annotations
 
@@ -28,6 +29,9 @@ def main(argv: list[str] | None = None) -> int:
 
     i = sub.add_parser("inspect", help="dump layers/hotspots/chunk order of .cur/.ani files")
     i.add_argument("files", type=Path, nargs="+")
+
+    u = sub.add_parser("unpack", help="verify the vendored upstream archive (sha256) and extract [upstream] extract")
+    u.add_argument("theme", type=Path)
 
     p = sub.add_parser("probe", help="write the size-probe cursor")
     p.add_argument("--out", type=Path, default=Path("probe"))
@@ -59,6 +63,18 @@ def main(argv: list[str] | None = None) -> int:
     except (ConfigError, OSError) as e:
         print(f"theme.toml error: {e}", file=sys.stderr)
         return 2
+
+    if a.cmd == "unpack":
+        import tarfile
+
+        from .upstream import UnpackError, unpack
+
+        try:
+            unpack(theme)
+        except (UnpackError, OSError, tarfile.TarError) as e:
+            print(f"unpack error: {e}", file=sys.stderr)
+            return 4
+        return 0
 
     if a.cmd == "build":
         from .build import build_theme
