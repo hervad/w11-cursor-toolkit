@@ -44,6 +44,37 @@ class SplitError(ValueError):
     pass
 
 
+_FILTER_REF = re.compile(r"url\(\s*#([^)\s]+)\s*\)")
+
+
+def _filter_ref(el: ET.Element) -> str | None:
+    style = el.get("style", "")
+    m = re.search(r"(?:^|;)\s*filter\s*:\s*(url\([^)]*\))", style)
+    return m.group(1) if m else el.get("filter")
+
+
+def strip_filtered(svg_text: str) -> tuple[str, int]:
+    """Remove every element drawn through an SVG filter (`filter:url(#...)` in style, or a filter attribute), then
+    every <filter> no longer referenced. For upstreams that bake their drop shadow in as blurred copies (ADR-14:
+    Windows draws its own). Returns (svg, elements removed); with nothing to remove the text is returned unchanged."""
+    root = ET.fromstring(svg_text)
+    parent = {c: p for p in root.iter() for c in p}
+    hits = [el for el in root.iter() if el.tag != f"{{{SVG_NS}}}filter" and _filter_ref(el)]
+    if not hits:
+        return svg_text, 0
+    for el in hits:
+        if el in parent:          # an ancestor removed earlier takes its children with it
+            try:
+                parent[el].remove(el)
+            except ValueError:
+                pass
+    used = {m.group(1) for el in root.iter() for v in el.attrib.values() for m in _FILTER_REF.finditer(v)}
+    parent = {c: p for p in root.iter() for c in p}
+    for f in [el for el in root.iter(f"{{{SVG_NS}}}filter") if el.get("id") not in used]:
+        parent[f].remove(f)
+    return ET.tostring(root, encoding="unicode"), len(hits)
+
+
 def _length(value: str | None, what: str) -> float:
     m = _LENGTH.match(value or "")
     if not m:

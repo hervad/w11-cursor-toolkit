@@ -77,6 +77,7 @@ class Theme:
     variants: list[Variant]
     cursors: dict[str, CursorSpec]
     master: Path | None = None         # [source] master (absolute)
+    strip_filtered: bool = False       # [render] strip_filtered: drop filtered elements = baked shadow (ADR-14)
 
     def resolve(self, key: str) -> CursorSpec:
         """Follow same_as links (pin -> link etc.)."""
@@ -217,9 +218,12 @@ def load_theme(path: str | Path) -> Theme:
         variants=variants,
         cursors=cursors,
         master=master,
+        strip_filtered=r.get("strip_filtered", False),
     )
     for k in cursors:
         theme.resolve(k)  # detect same_as loops early
+    if not isinstance(theme.strip_filtered, bool):
+        raise ConfigError("[render] strip_filtered must be true or false")
     if theme.hotspot_mode not in ("point", "center"):
         raise ConfigError("[render] hotspot_mode must be 'point' or 'center'")
     from .render import RENDERERS

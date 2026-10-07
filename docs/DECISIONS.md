@@ -79,3 +79,10 @@ Mouse pointer and touch > "Enable mouse pointer shadow" ON → a small shadow ap
 disappears. A shadow baked into the artwork would therefore be doubled for everyone with the toggle on.
 *Decision:* no shadow in the artwork (option C). The raster post-process design (LAYER_SPLITTING_DESIGN.md §12)
 is kept as designed-not-implemented; revisit only as an opt-in variant. Themes document the toggle in their README.
+*Addendum (2026-10-08) - shadows baked into the SVG:* `[render] strip_filtered = true` removes every element drawn
+through an SVG filter (`filter:url(#…)` in style or a `filter` attribute) and then every `<filter>` left unused;
+a file with nothing to remove passes through unchanged. Opt-in per theme, because a filter is not always a shadow.
+*Evidence (Material Cursors @2a5f302):* all 600 SVGs checked - 1,158 filtered elements, every one a top-level black
+fill at opacity 0.3 without stroke, and nothing else uses a filter, so the option removes exactly the shadow. Tests:
+`tests/test_strip_filtered.py`. A toolkit older than this ignores the key and would bake the shadow in, so theme
+workflows using it must pin a tag that has it.

@@ -32,6 +32,8 @@ design_canvas = 24       # nominal SVG canvas in design px; hotspots below are i
                          # 24 = Linux Xcursor convention (rendered at 32 for Windows size 1),
                          # 32 = already Windows-sized. Check the SVG viewBox.
 hotspot_mode  = "point"  # "point": geometric SVG point (arrow tips). "center": middle of a design pixel.
+# strip_filtered = true  # remove every element drawn through an SVG filter (+ unused <filter>s): for upstreams that
+                        # bake their drop shadow in as blurred copies. ADR-14: Windows draws its own shadow.
 
 [sizes]                  # omit the whole table to use toolkit defaults (recommended until the probe says otherwise)
 # static           = [32, 40, 48, 56, 64, 72, 80, 96, 112, 128, 144, 160, 192, 224, 256]

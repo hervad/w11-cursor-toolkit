@@ -12,7 +12,7 @@ from .inf import make_inf, make_uninstall_cmd
 from .pack import CursorImage, pack_ani, pack_cur
 from .render import render_svg_text
 from .roles import ROLES
-from .split import extract
+from .split import extract, strip_filtered
 
 
 @lru_cache(maxsize=8)
@@ -47,6 +47,8 @@ def _svg_source(theme: Theme, variant: Variant, spec: CursorSpec, frame: int | N
 
 def _layers(theme: Theme, variant: Variant, spec: CursorSpec, frame: int | None, sizes) -> list[CursorImage]:
     name, svg = _svg_source(theme, variant, spec, frame)
+    if theme.strip_filtered:
+        svg, _ = strip_filtered(svg)
     canvas = theme.canvas_for(spec)
     return [
         CursorImage(
