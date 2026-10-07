@@ -59,3 +59,20 @@ def test_config_rejects_non_bool(tmp_path):
     t.write_text(demo.replace("[render]\n", '[render]\nstrip_filtered = "yes"\n', 1), encoding="utf-8")
     with pytest.raises(ConfigError, match="strip_filtered must be true or false"):
         load_theme(t)
+
+
+@pytest.mark.parametrize("section, line", [
+    ("[render]\n", 'strip_filterd = true\n'),                       # typo
+    ("[render]\n", 'shadow = "none"\n'),                            # a key from some future toolkit
+    ("[theme]\n", 'colour = "red"\n'),
+    ("[cursors.arrow]\n", 'hotspt = [1, 1]\n'),
+])
+def test_unknown_keys_are_an_error_not_ignored(tmp_path, section, line):
+    from w11cursor.config import ConfigError, load_theme
+
+    demo = (Path(__file__).parents[1] / "examples" / "demo-theme" / "theme.toml").read_text(encoding="utf-8")
+    t = tmp_path / "theme.toml"
+    t.write_text(demo.replace(section, section + line, 1), encoding="utf-8")
+    with pytest.raises(ConfigError, match=rf"unknown key\(s\) in .*{line.split()[0]} - a typo, or a theme.toml written for a newer w11cursor"):
+        load_theme(t)
+

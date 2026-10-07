@@ -116,10 +116,49 @@ def _req(tbl: dict, key: str, where: str):
     return tbl[key]
 
 
+# Every key the toolkit reads. An unknown key is an error, not ignored: a typo would otherwise do nothing, and a
+# theme that needs a newer toolkit (e.g. [render] strip_filtered) would build WRONG on an older one without a word.
+KNOWN_KEYS: dict[str, set[str]] = {
+    "<root>": {"schema", "theme", "upstream", "render", "sizes", "source", "variants", "cursors"},
+    "theme": {"slug", "name", "version", "license", "porter", "description"},
+    "upstream": {"kind", "url", "ref", "path", "authors", "license", "page",          # provenance
+                 "archive", "sha256", "extract", "into"},                              # w11cursor unpack
+    "render": {"renderer", "design_canvas", "hotspot_mode", "strip_filtered"},
+    "sizes": {"static", "animated", "ani_budget_bytes", "ani_chunk_order", "ani_rate", "layer_format",
+              "png_min_size"},   # removed; still recognised so it gets its own explanatory error below
+    "source": {"master"},
+    "variants": {"id", "scheme_name", "svg_dir", "recolor"},
+    "cursors": {"svg", "frames", "frame_count", "frame_start", "delay", "hotspot", "design_canvas", "same_as",
+                "layers", "transform", "rotate", "master"},
+}
+
+
+def _check_keys(data: dict) -> None:
+    def bad(section: str, label: str, keys) -> None:
+        unknown = sorted(set(keys) - KNOWN_KEYS[section])
+        if unknown:
+            from . import __version__
+
+            raise ConfigError(f"unknown key(s) in {label}: {', '.join(unknown)} - a typo, or a theme.toml written for "
+                              f"a newer w11cursor than this one ({__version__})")
+
+    bad("<root>", "the top level", data)
+    for sec in ("theme", "upstream", "render", "sizes", "source"):
+        if isinstance(data.get(sec), dict):
+            bad(sec, f"[{sec}]", data[sec])
+    for v in data.get("variants", []):
+        if isinstance(v, dict):
+            bad("variants", f"[[variants]] id={v.get('id')!r}", v)
+    for key, c in data.get("cursors", {}).items():
+        if isinstance(c, dict):
+            bad("cursors", f"[cursors.{key}]", c)
+
+
 def load_theme(path: str | Path) -> Theme:
     path = Path(path).resolve()
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     root = path.parent
+    _check_keys(data)
 
     t = _req(data, "theme", "root")
     r = data.get("render", {})

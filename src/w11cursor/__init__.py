@@ -3,4 +3,4 @@
 Pipeline:  theme.toml -> config -> render (SVG -> RGBA per size)
            -> pack (.cur / .ani) -> install.inf -> validate -> zip
 """
-__version__ = "0.1.0"
+__version__ = "0.2.0"

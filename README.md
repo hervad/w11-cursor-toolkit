@@ -58,7 +58,11 @@ Why the defaults are what they are - measured layer choice, size lists, `.ani` l
 ## Using it from a theme repo
 
 Start from [`theme-template/`](theme-template/) (theme.toml with every option commented, README, CREDITS,
-workflow). The theme's workflow calls the reusable build:
+workflow).
+An unknown key in `theme.toml` is an error: a typo, or an option from a newer toolkit, fails the build
+instead of being ignored. Pin the toolkit tag that has every option your theme uses.
+
+The theme's workflow calls the reusable build:
 
 ```yaml
 # .github/workflows/release.yml
