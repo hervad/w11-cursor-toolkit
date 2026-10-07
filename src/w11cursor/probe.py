@@ -14,7 +14,8 @@ from .pack import CursorImage, pack_cur
 from .sizes import STATIC_SIZES
 
 # Extra odd sizes so we can SEE when Windows asks for something we didn't expect.
-PROBE_SIZES = tuple(sorted(set(STATIC_SIZES) | {36, 44, 60, 88, 104, 120, 176, 208, 240}))
+# 84/100/140/168/200 make 125 % and 175 % (the scales where the exact and bucketed models DISAGREE) fully covered.
+PROBE_SIZES = tuple(sorted(set(STATIC_SIZES) | {36, 44, 60, 84, 88, 100, 104, 120, 140, 168, 176, 200, 208, 240}))
 
 
 def probe_layer(n: int) -> Image.Image:
