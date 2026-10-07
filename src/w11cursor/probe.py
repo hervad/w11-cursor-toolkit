@@ -15,7 +15,8 @@ from .sizes import STATIC_SIZES
 
 # Extra odd sizes so we can SEE when Windows asks for something we didn't expect.
 # 84/100/140/168/200 make 125 % and 175 % (the scales where the exact and bucketed models DISAGREE) fully covered.
-PROBE_SIZES = tuple(sorted(set(STATIC_SIZES) | {36, 44, 60, 84, 88, 100, 104, 120, 140, 168, 176, 200, 208, 240}))
+# 40/56 are no longer shipped (never chosen) but stay in the probe: they are exact-model predictions.
+PROBE_SIZES = tuple(sorted(set(STATIC_SIZES) | {36, 40, 44, 56, 60, 84, 88, 100, 104, 120, 140, 168, 176, 200, 208, 240}))
 
 
 def probe_layer(n: int) -> Image.Image:
