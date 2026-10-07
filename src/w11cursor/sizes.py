@@ -25,9 +25,9 @@ def choosable_sizes(buckets=VERIFIED_BUCKETS + ASSUMED_BUCKETS, bases=SLIDER_BAS
 # 20 sizes: 32 48 64 72 80 96 112 120 128 144 160 168 176 192 200 208 216 224 240 256
 # (200 exists only because of the ASSUMED 2.5 bucket: 80 x 2.5)
 STATIC_SIZES: tuple[int, ...] = choosable_sizes()
-# Option B (maintainer, 2026-10-07): exact for sliders 1-5 and 7 at 100-149 %, sliders 1-4 at 150-199 %;
-# Polar busy.ani = 456 KB. Every size here is choosable (tests/test_sizes.py).
-ANIMATED_SIZES: tuple[int, ...] = (32, 48, 64, 72, 80, 96, 120, 128)
+# Option C (maintainer, 2026-10-08): exact for sliders 1-5 and 7 at 100-149 %, sliders 1-5 at 150-199 %.
+# Polar busy.ani ~569 KB; largest image offset ~42 % of the 65,535 loader limit. Every size is choosable (test_sizes).
+ANIMATED_SIZES: tuple[int, ...] = (32, 48, 64, 72, 80, 96, 120, 128, 144)
 
 # .ani loader limit (MEASURED 2026-10-07, docs/SIZE_POLICY.md ".ani size-limit experiment"): inside every frame,
 # each image must START at byte <= 65,535 of that frame (65,535 loads, 65,536 fails - consistent with a 16-bit
