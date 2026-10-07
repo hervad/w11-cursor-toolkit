@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Self-drawn test fixture (MIT). Axis-aligned square on whole design pixels with a Gaussian blur:
+       without blur support its edges are pixel-aligned at 32/64/128 px (alpha only 0 and 255);
+       with blur the edge fades over several pixels (many alpha levels). -->
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="16" height="16" fill="#000000" filter="url(#soft)"/>
+</svg>

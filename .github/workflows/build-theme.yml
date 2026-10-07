@@ -1,0 +1,72 @@
+# REUSABLE workflow called by every theme repo:
+#   jobs:
+#     build:
+#       uses: hervad/w11-cursor-toolkit/.github/workflows/build-theme.yml@v0.1.0
+#       with: { toolkit-ref: v0.1.0 }
+#       permissions: { contents: write }
+#
+# build (Linux, native cairo) -> verify (Windows, real cursor loader) -> release (tags v*)
+name: build-theme
+on:
+  workflow_call:
+    inputs:
+      theme-file:
+        type: string
+        default: theme.toml
+      toolkit-ref:
+        description: Tag/branch of w11-cursor-toolkit to build with (pin a tag!)
+        type: string
+        default: main
+      pre-build:
+        description: Optional shell command run before building (e.g. generate upstream SVGs)
+        type: string
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y libcairo2
+      - run: pip install "w11cursor @ git+https://github.com/hervad/w11-cursor-toolkit@${{ inputs.toolkit-ref }}"
+      - if: inputs.pre-build != ''
+        run: ${{ inputs.pre-build }}
+      - run: w11cursor build "${{ inputs.theme-file }}" --out dist
+      - run: w11cursor validate "${{ inputs.theme-file }}" --dist dist
+      - name: Checksums for release assets
+        run: cd dist && sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: dist, path: dist }
+
+  verify-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: hervad/w11-cursor-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: toolkit
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist }
+      - shell: pwsh
+        run: ./toolkit/scripts/Test-LoadCursors.ps1 -Path dist
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, verify-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true

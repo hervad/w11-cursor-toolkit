@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "w11cursor"
+version = "0.1.0"
+description = "Build crisp multi-resolution Windows 11 cursor schemes (.cur/.ani + install.inf) from SVG sources"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Vadym Herman (hervad)" }]
+dependencies = [
+  "pillow>=10.1",   # 10.1+ needed for ImageFont.load_default(size=...) used by the size probe
+  "cairosvg>=2.7",  # default SVG renderer (needs the native cairo library, see README)
+  "cairocffi>=1.7", # 1.7+ honours CAIROCFFI_DLL_DIRECTORIES on Windows
+  "resvg-py==0.5.0", # [render] renderer = "resvg" (SVG filters); pure abi3 wheel, no native deps
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+w11cursor = "w11cursor.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/w11cursor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

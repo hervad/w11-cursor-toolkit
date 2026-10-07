@@ -1,0 +1,42 @@
+# Toolkit CI: unit tests on Linux, then prove the packers against the REAL Windows loader.
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y libcairo2
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Build + validate demo theme
+        run: |
+          w11cursor build examples/demo-theme/theme.toml --out dist
+          w11cursor validate examples/demo-theme/theme.toml --dist dist
+          w11cursor probe --out dist/probe
+      - uses: actions/upload-artifact@v4
+        with: { name: demo-dist, path: dist }
+
+  windows-load-test:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: demo-dist, path: dist }
+      - name: Load every cursor through user32
+        shell: pwsh
+        run: ./scripts/Test-LoadCursors.ps1 -Path dist
+      # Non-blocking until it has passed on the GitHub runner (undocumented API; the runner's
+      # C:\Windows\Cursors\aero_busy.ani control file is unverified). Then remove continue-on-error.
+      - name: Per-step .ani delays as parsed by user32
+        shell: pwsh
+        continue-on-error: true
+        run: ./scripts/Get-AniFrameTiming.ps1 -Path dist

@@ -1,0 +1,73 @@
+# Demo theme - proves the toolchain end-to-end (build -> validate -> Windows load test).
+# Not a real theme. Real themes copy theme-template/theme.toml.
+schema = 1
+
+[theme]
+slug = "demo"
+name = "w11cursor Demo"
+version = "0.1.0"
+license = "MIT"
+porter = "hervad"
+description = "Synthetic test theme for CI"
+
+[render]
+renderer = "cairosvg"
+design_canvas = 32
+
+[[variants]]
+id = "light"
+scheme_name = "w11cursor Demo"
+svg_dir = "svg"
+
+[[variants]]
+id = "gold"
+scheme_name = "w11cursor Demo Gold"
+svg_dir = "svg"
+recolor = { "#FFFFFF" = "#F3D58A" }
+
+[cursors.arrow]
+svg = "arrow.svg"
+hotspot = [3, 2]
+
+[cursors.text]
+svg = "text.svg"
+hotspot = [16, 16]
+
+[cursors.precision]
+svg = "cross.svg"
+hotspot = [16, 16]
+
+[cursors.busy]
+frames = "busy-{n:02d}.svg"
+frame_count = 8
+delay = 4
+hotspot = [16, 16]
+
+[cursors.working]
+same_as = "busy"
+
+# Everything below reuses art so the demo covers all 17 roles.
+[cursors.help]
+same_as = "arrow"
+[cursors.handwriting]
+same_as = "arrow"
+[cursors.unavailable]
+same_as = "precision"
+[cursors.vert]
+same_as = "precision"
+[cursors.horz]
+same_as = "precision"
+[cursors.dgn1]
+same_as = "precision"
+[cursors.dgn2]
+same_as = "precision"
+[cursors.move]
+same_as = "precision"
+[cursors.alternate]
+same_as = "arrow"
+[cursors.link]
+same_as = "arrow"
+[cursors.pin]
+same_as = "arrow"
+[cursors.person]
+same_as = "arrow"
