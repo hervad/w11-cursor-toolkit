@@ -1,5 +1,5 @@
 <#
-  Shared by Run-SizeProbe.ps1 and Measure-CursorSize.ps1 (dot-source it):  . "$PSScriptRoot\CursorState.ps1"
+  Used by Run-SizeProbe.ps1 (dot-source it):  . "$PSScriptRoot\CursorState.ps1"
   Saves the pointer settings these scripts touch and restores them EXACTLY, then proves it by comparing the
   registry with the snapshot taken at the start.
 
