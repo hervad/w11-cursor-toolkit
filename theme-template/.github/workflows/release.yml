@@ -1,0 +1,17 @@
+# Builds on every push/PR (artifact), publishes a GitHub Release on tags v*.
+name: release
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: hervad/w11-cursor-toolkit/.github/workflows/build-theme.yml@v0.1.0
+    with:
+      toolkit-ref: v0.1.0
+      # pre-build: "make -C upstream svg"   # only if upstream must generate its SVGs first (Comix)
+    permissions:
+      contents: write

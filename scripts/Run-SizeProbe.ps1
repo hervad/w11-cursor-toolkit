@@ -29,6 +29,9 @@ if (-not $PSBoundParameters.ContainsKey('Scale')) {
   }
 }
 
+# Tag every reading with the OS build (results from other builds must be told apart).
+$cv = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+$osBuild = "$($cv.CurrentBuildNumber).$($cv.UBR)"
 $state = Save-CursorState
 Write-CursorBanner $state @(
   "Arrow (Normal Select) -> $probe",
@@ -43,7 +46,7 @@ try {
     Update-SystemCursors
     $seen = Read-Host "Slider $s ($px px x $Scale%) - number shown on cursor (add '?' if blurry)"
     $rows += [pscustomobject]@{ scale = $Scale; slider = $s; base_px = $px
-      expected = [math]::Min(256, [math]::Round($px * $Scale / 100)); shown = $seen }
+      expected = [math]::Min(256, [math]::Round($px * $Scale / 100)); shown = $seen; os_build = $osBuild }
   }
 } catch {
   Write-Host "ERROR: $($_.Exception.Message)"   # never exit silently

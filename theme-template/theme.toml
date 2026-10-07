@@ -1,0 +1,131 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# theme.toml - the ONLY build input of a theme repo. Read by `w11cursor`.
+# Fill every TODO, then:  w11cursor build theme.toml && w11cursor validate theme.toml
+# ─────────────────────────────────────────────────────────────────────────────
+schema = 1
+
+[theme]
+slug        = "TODO-slug"               # used in zip names: <slug>-<variant>-w11-hidpi-v<version>.zip
+name        = "TODO Upstream Name"
+version     = "0.1.0"                   # YOUR port version (tag v0.1.0 to release)
+license     = "TODO-SPDX"               # artwork license = upstream license (GPL-3.0-only, GPL-2.0-only, ...)
+porter      = "Vadym Herman (hervad)"
+description = "TODO one line"
+
+[upstream]                              # provenance - copied into README/CREDITS, also documents the pin
+kind    = "git"                         # git | tarball
+url     = "TODO"
+ref     = "TODO-commit-sha"             # pin a COMMIT, never a branch
+path    = "upstream"                    # git submodule (or unpacked tarball) location
+# kind = "tarball" only (run `w11cursor unpack theme.toml` before building; CI: pre-build input):
+# archive = "upstream/<original-name>.tar.bz2"  # committed UNCHANGED (GPL corresponding source)
+# sha256  = "<64 hex>"                          # checked before anything is read
+# extract = ["Dir/Source/Cursors.svg"]          # exact member names; regular files only
+# into    = "build/upstream"                    # git-ignored; never inside upstream/
+authors = ["TODO"]
+license = "TODO"
+page    = "TODO gnome-look URL"
+
+[render]
+renderer      = "cairosvg"   # "resvg" if the SVGs use filters (feGaussianBlur shadows); see ADR-12
+design_canvas = 24       # nominal SVG canvas in design px; hotspots below are in THIS space.
+                         # 24 = Linux Xcursor convention (rendered at 32 for Windows size 1),
+                         # 32 = already Windows-sized. Check the SVG viewBox.
+hotspot_mode  = "point"  # "point": geometric SVG point (arrow tips). "center": middle of a design pixel.
+
+[sizes]                  # omit the whole table to use toolkit defaults (recommended until the probe says otherwise)
+# static           = [32, 40, 48, 56, 64, 72, 80, 96, 112, 128, 144, 160, 192, 224, 256]
+# animated         = [32, 40, 48, 64, 80, 96, 128]
+# ani_budget_bytes = 1000000
+# ani_chunk_order  = ["anih", "LIST", "rate"]
+# ani_rate         = "auto"   # "auto": rate chunk only when delays differ (Microsoft layout) | "always"
+# png_min_size     = 1   # 256 = BMP below 256 px (fallback if a PNG layer is ever rejected)
+
+# Only if upstream ships ONE Inkscape master with a layer per drawing (e.g. Polar) - see ADR-13:
+# [source]
+# master = "upstream/Theme/Source/Cursors.svg"
+# then per cursor, instead of svg/frames:
+#   layers    = ["Arrow", "Info"]                 # composite; stacked in the master's order
+#   transform = "matrix(0 1 1 0 0 0)"             # optional, around the kept layers
+#   rotate    = { id = "g123", center = [16, 16], step_deg = 10 }   # + frame_count -> animated;
+#                                                 # center in the element's PARENT coordinates
+
+# One [[variants]] block per scheme you ship. Only variants on the gnome-look page!
+[[variants]]
+id          = "default"
+scheme_name = "TODO Name W11 HiDPI"     # what users see in Mouse Properties; must be unique
+svg_dir     = "upstream/src/svg"        # TODO
+# recolor   = { "#000000" = "#ffffff" } # exact text replacements in the SVG source (optional)
+
+# ── Windows roles (all 17 required). svg = file in svg_dir (overrides/<variant>/ wins),
+#    frames = animated, same_as = reuse another role's art. Hints = usual Xcursor names.
+[cursors.arrow]        # Normal Select       hints: left_ptr, default
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.help]         # Help Select         hints: help, question_arrow, left_ptr_help
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.working]      # Working in Background (animated) hints: left_ptr_watch, progress
+frames = "TODO-{n:02d}.svg"
+frame_count = 1
+frame_start = 1
+delay = 2              # jiffies (1/60 s); copy from upstream .in/.cursor config
+hotspot = [0, 0]
+
+[cursors.busy]         # Busy (animated)     hints: wait, watch
+frames = "TODO-{n:02d}.svg"
+frame_count = 1
+delay = 2
+hotspot = [0, 0]
+
+[cursors.precision]    # Precision Select    hints: crosshair, cross
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.text]         # Text Select         hints: xterm, text
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.handwriting]  # Handwriting         hints: pencil
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.unavailable]  # Unavailable         hints: not-allowed, circle, crossed_circle
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.vert]         # Vertical Resize     hints: size_ver, sb_v_double_arrow
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.horz]         # Horizontal Resize   hints: size_hor, sb_h_double_arrow
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.dgn1]         # Diagonal Resize 1 = NW-SE (↖↘)  hints: size_fdiag, bd_double_arrow - VERIFY VISUALLY
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.dgn2]         # Diagonal Resize 2 = NE-SW (↗↙)  hints: size_bdiag, fd_double_arrow - VERIFY VISUALLY
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.move]         # Move                hints: fleur, size_all
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.alternate]    # Alternate Select    hints: up-arrow, center_ptr
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.link]         # Link Select         hints: pointer, hand2
+svg = "TODO.svg"
+hotspot = [0, 0]
+
+[cursors.pin]          # Location Select (Win10 1903+). Upstream rarely has one: reuse or draw in overrides/_all/pin.svg
+same_as = "link"
+
+[cursors.person]       # Person Select (Win10 1903+). Same story.
+same_as = "link"

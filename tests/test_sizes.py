@@ -37,5 +37,6 @@ def test_rule_matches_every_recorded_probe_reading():
     assert len(rows) >= 25
     for r in rows:
         scale, base, shown = int(r["scale"]), int(r["base_px"]), r["shown"].strip()
+        assert r.get("os_build", "").count(".") == 1, f"reading without an OS build tag: {r}"
         assert not shown.endswith("?"), f"blurry reading recorded: {r}"
         assert int(shown) == min(S.MAX_LAYER, round(base * bucket(scale))), r

@@ -1,5 +1,5 @@
 """Cursors from ONE Inkscape master SVG: keep some layers, optionally transform them, optionally rotate
-one element per animation frame. See docs/LAYER_SPLITTING_DESIGN.md (workspace) and ADR-13.
+one element per animation frame. See docs/LAYER_SPLITTING_DESIGN.md and ADR-13.
 
     extract(master_text, ["Arrow", "Info"])                       # composite of two layers
     extract(master_text, ["NS"], transform="matrix(0 1 1 0 0 0)") # transposed copy
