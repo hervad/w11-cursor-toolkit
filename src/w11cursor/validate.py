@@ -157,7 +157,11 @@ def describe(path: Path) -> str:
         if info.frames:
             first = parse_cur(info.frames[0])
             lines.append("  frame 0 layers: " + ", ".join(f"{e.size}px({e.fmt}) hs{e.hotspot}" for e in first))
+            lines.append("  frame 0 image offsets (directory order): " + ", ".join(f"#{i} {e.size}px @{e.offset:,}" for i, e in enumerate(first)))
+            worst = max(max(x.offset for x in parse_cur(fr)) for fr in info.frames)
+            lines.append(f"  largest image offset in any frame: {worst:,} (loader limit 65,535)")
     else:
-        for e in parse_cur(blob):
-            lines.append(f"  {e.size:>3}px  {e.fmt}  hotspot={e.hotspot}  {e.nbytes:,} B")
+        lines.append("   #  size   fmt  hotspot      bytes      starts at")
+        for i, e in enumerate(parse_cur(blob)):
+            lines.append(f"  {i:>2}  {e.size:>3}px  {e.fmt}  {str(e.hotspot):<10} {e.nbytes:>8,} B  @{e.offset:>9,}")
     return "\n".join(lines)
