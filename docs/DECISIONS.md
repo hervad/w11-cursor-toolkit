@@ -37,8 +37,9 @@ its name (stars/links); optional rename later — GitHub redirects old URLs.
 **ADR-9 Variants = only those on the gnome-look page.** Comix 12, Future 1, Future-cyan 1, Polar 3, Material 3.
 *Amendment (2026-10-08):* one repo may combine gnome-look pages that are the same artwork from the same upstream
 source. Future (p/1457141) and Future-cyan (p/1465392) ship as two variants of `future-cursors-w11-hidpi`:
-same repo and commit, all 93 drawings render with identical shapes, only the accent colour differs. Still no
-invented variants: each one exists on a gnome-look page.
+same repo and commit, all 93 drawings render with identical shapes, only the accent colour differs. Future-dark
+(p/1457884) joined as a third (grey accents; shapes identical except copy.svg, not a Windows role, and a few
+accent pixels). Still no invented variants: each one exists on a gnome-look page.
 
 **ADR-10 Windows cairo: preload by full path.** cffi 2.x opens bare DLL names with
 `LoadLibraryExA(name, NULL, 0)` (legacy search order), which ignores `os.add_dll_directory` — so
