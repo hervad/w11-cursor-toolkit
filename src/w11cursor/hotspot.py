@@ -7,8 +7,7 @@ Three modes (theme.toml  [render] hotspot_mode):
 
 * "point" (default) - the hotspot is a GEOMETRIC point in SVG coordinates, e.g. the
   vertex of the arrow tip.  out = round(v * size / canvas)
-  This is what the validated capitaine-cursors-w11-hidpi build used
-  (design (4,2)@24 -> (5,3)@32 ... (21,11)@128) and keeps arrow tips exact.
+  (Polar, Material, Future and Comix use it; capitaine and Layan Gold use "pixel", as their own v2 builds did.)
 
 * "pixel" - the hotspot is a geometric point and we take the output PIXEL THAT CONTAINS it:
   out = floor(v * size / canvas). For fractional points measured at a visible tip (Layan Gold v2:
