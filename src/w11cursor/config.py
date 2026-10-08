@@ -277,8 +277,10 @@ def load_theme(path: str | Path) -> Theme:
         theme.resolve(k)  # detect same_as loops early
     if not isinstance(theme.strip_filtered, bool):
         raise ConfigError("[render] strip_filtered must be true or false")
-    if theme.hotspot_mode not in ("point", "center"):
-        raise ConfigError("[render] hotspot_mode must be 'point' or 'center'")
+    from .hotspot import MODES as HOTSPOT_MODES
+
+    if theme.hotspot_mode not in HOTSPOT_MODES:
+        raise ConfigError(f"[render] hotspot_mode must be one of: {', '.join(HOTSPOT_MODES)}")
     from .render import RENDERERS
 
     if theme.renderer not in RENDERERS:

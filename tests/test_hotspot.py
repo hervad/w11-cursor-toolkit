@@ -24,3 +24,14 @@ def test_clamped_inside_image():
 def test_bad_mode():
     with pytest.raises(ValueError):
         scale_hotspot((0, 0), 32, 32, "nope")
+
+
+def test_pixel_mode_takes_the_pixel_that_contains_the_point():
+    from w11cursor.hotspot import scale_hotspot
+    # Layan Gold v2's arrow tip (4.78, 5.66) on a 32 grid -> v2's published hotspots
+    assert scale_hotspot((4.78, 5.66), 32, 32, "pixel") == (4, 5)
+    assert scale_hotspot((4.78, 5.66), 32, 48, "pixel") == (7, 8)
+    assert scale_hotspot((4.78, 5.66), 32, 256, "pixel") == (38, 45)
+    assert scale_hotspot((4.78, 5.66), 32, 32, "point") == (5, 6)            # the old rounding differs
+    assert scale_hotspot((16, 16), 32, 48, "pixel") == scale_hotspot((16, 16), 32, 48, "point") == (24, 24)
+    assert scale_hotspot((31.9, 31.9), 32, 32, "pixel") == (31, 31)          # stays inside the image
