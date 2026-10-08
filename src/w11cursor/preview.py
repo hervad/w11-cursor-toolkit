@@ -114,9 +114,16 @@ def layout_for(variant_dirs: list[Path]) -> str:
     return "rows" if len(extra) > len(main) // 2 else "panels"
 
 
-def make_preview(variant_dirs: list[Path], out: Path, size: int = 48, scale: int = 2) -> Path:
+BACKGROUNDS = ("auto", "light", "dark")
+
+
+def make_preview(variant_dirs: list[Path], out: Path, size: int = 48, scale: int = 2, background: str = "auto") -> Path:
+    """background (rows layout only): auto = per row by contrast; light / dark = every row the same, so rows that
+    differ in style (e.g. translucent vs opaque) can be compared."""
+    if background not in BACKGROUNDS:
+        raise ValueError(f"background must be one of {BACKGROUNDS}")
     if layout_for(variant_dirs) == "rows":
-        return _make_rows(variant_dirs, out, size, scale)
+        return _make_rows(variant_dirs, out, size, scale, background)
     main, extra = pick(variant_dirs)
     px, gap, pad, radius = size * scale, 20 * scale, 28 * scale, 16 * scale
     split = 2 * gap if extra else 0                      # extra room around the divider
@@ -144,7 +151,7 @@ def make_preview(variant_dirs: list[Path], out: Path, size: int = 48, scale: int
     return out
 
 
-def _make_rows(variant_dirs: list[Path], out: Path, size: int, scale: int) -> Path:
+def _make_rows(variant_dirs: list[Path], out: Path, size: int, scale: int, background: str = "auto") -> Path:
     px, gap, pad, radius = size * scale, 20 * scale, 28 * scale, 16 * scale
     rows = [[layer(p.read_bytes(), px) for p in _distinct(d)] for d in variant_dirs]
     n = max(len(r) for r in rows)
@@ -155,7 +162,7 @@ def _make_rows(variant_dirs: list[Path], out: Path, size: int, scale: int) -> Pa
     for row, icons in enumerate(rows):
         top = row * row_h
         last = row == len(rows) - 1
-        draw.rounded_rectangle((0, top, width - 1, top + row_h - 1), radius=radius, fill=PANELS[_background(icons)],
+        draw.rounded_rectangle((0, top, width - 1, top + row_h - 1), radius=radius, fill=PANELS[_background(icons) if background == "auto" else BACKGROUNDS.index(background) - 1],
                                corners=(row == 0, row == 0, last, last))
         for i, icon in enumerate(icons):
             canvas.alpha_composite(icon, (pad + i * (px + gap), top + pad))

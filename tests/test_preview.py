@@ -71,7 +71,7 @@ def test_cli_preview(dist, tmp_path, monkeypatch):
     calls = {}
     monkeypatch.setattr(cli, "_variant_dirs", lambda theme_path, dist_dir, only=None: dist)
     monkeypatch.setattr("w11cursor.preview.make_preview",
-                        lambda dirs, out, size, scale: calls.update(dirs=dirs, size=size) or out)
+                        lambda dirs, out, size, scale, background: calls.update(dirs=dirs, size=size) or out)
     assert cli.main(["preview", str(toml), "--out", str(tmp_path / "p.png")]) == 0
     assert calls == {"dirs": dist, "size": 48}
 
@@ -127,3 +127,12 @@ def test_variant_dirs_subset_keeps_given_order_and_rejects_unknown(tmp_path):
     assert _variant_dirs(demo, tmp_path, ["gold", "light"]) == [tmp_path / "gold", tmp_path / "light"]
     with pytest.raises(ConfigError, match=r"unknown variant\(s\) \['nope'\]"):
         _variant_dirs(demo, tmp_path, ["nope"])
+
+
+def test_fixed_background_puts_every_row_on_the_same_panel(tmp_path):
+    dirs = [_shaded(tmp_path, "dark", 20), _shaded(tmp_path, "light", 220)]
+    img = Image.open(make_preview(dirs, tmp_path / "p.png", background="light"))
+    assert img.getpixel((5, img.height // 4))[:3] == (243, 243, 243)
+    assert img.getpixel((5, 3 * img.height // 4))[:3] == (243, 243, 243)       # auto would make this row dark
+    with pytest.raises(ValueError, match="background must be one of"):
+        make_preview(dirs, tmp_path / "q.png", background="pink")

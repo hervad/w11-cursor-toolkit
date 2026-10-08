@@ -54,6 +54,8 @@ def main(argv: list[str] | None = None) -> int:
     pv.add_argument("--out", type=Path, default=Path("docs/preview.png"))
     pv.add_argument("--size", type=int, default=48, help="icon size in the image, before the 2x HiDPI scale")
     pv.add_argument("--variant", action="append", help="only these variants, in this order (repeatable)")
+    pv.add_argument("--background", choices=("auto", "light", "dark"), default="auto",
+                    help="one-row-per-variant layout: per-row contrast (auto) or the same background for every row")
 
     p = sub.add_parser("probe", help="write the size-probe cursor")
     p.add_argument("--out", type=Path, default=Path("probe"))
@@ -84,7 +86,8 @@ def main(argv: list[str] | None = None) -> int:
         from .config import ConfigError
 
         try:
-            out = preview.make_preview(_variant_dirs(a.theme, a.dist, a.variant), a.out, size=a.size, scale=2)
+            out = preview.make_preview(_variant_dirs(a.theme, a.dist, a.variant), a.out, size=a.size, scale=2,
+                                       background=a.background)
         except (ConfigError, ValueError, OSError) as e:
             print(f"preview error: {e}", file=sys.stderr)
             return 5
