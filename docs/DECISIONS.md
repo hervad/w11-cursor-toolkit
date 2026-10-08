@@ -91,3 +91,9 @@ a file with nothing to remove passes through unchanged. Opt-in per theme, becaus
 fill at opacity 0.3 without stroke, and nothing else uses a filter, so the option removes exactly the shadow. Tests:
 `tests/test_strip_filtered.py`. A toolkit older than this ignores the key and would bake the shadow in, so theme
 workflows using it must pin a tag that has it.
+*Exception (2026-10-08) - when the shadow carries the outline:* Comix keeps upstream's shadow (`strip_filtered =
+false`, `renderer = "resvg"`). Its Black variants have a light (white, 70 %) outline on a dark body; on light
+backgrounds that outline is only visible against the shadow, and without it the edges looked rough at 32 px even with
+Windows' pointer shadow on (maintainer's on-screen check; 32 px comparison against upstream's own build). Survey of
+every shipped arrow: no other theme has a light outline on a dark body except published Capitaine Dark, which has
+its own grey halo. Rule of thumb: strip a baked shadow only when the outline is dark or the body is light.
