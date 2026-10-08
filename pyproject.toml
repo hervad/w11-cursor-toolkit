@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "w11cursor"
-version = "0.4.0"
+version = "0.4.1"
 description = "Build multi-resolution Windows 11 cursor schemes (.cur/.ani + install.inf) from SVG sources"
 readme = "README.md"
 license = "MIT"
