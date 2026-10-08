@@ -136,3 +136,22 @@ def test_fixed_background_puts_every_row_on_the_same_panel(tmp_path):
     assert img.getpixel((5, 3 * img.height // 4))[:3] == (243, 243, 243)       # auto would make this row dark
     with pytest.raises(ValueError, match="background must be one of"):
         make_preview(dirs, tmp_path / "q.png", background="pink")
+
+
+def test_background_judges_the_body_not_a_thick_outline(tmp_path):
+    """Capitaine Dark: black body with a thick white outline -> light panel, although most opaque pixels are white."""
+    from PIL import ImageDraw
+    from w11cursor.preview import _background
+
+    def cursor(body, outline):
+        img = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        d.ellipse((8, 8, 88, 88), fill=(*outline, 255))      # outline ring (~14 px wide) ...
+        d.ellipse((22, 22, 74, 74), fill=(*body, 255))       # ... around a smaller body
+        return img
+
+    dark = [cursor((0, 0, 0), (255, 255, 255))]
+    assert _background(dark) == 0                            # light panel (old rule: dark, by pixel majority)
+    assert _background([cursor((255, 255, 255), (0, 0, 0))]) == 1
+    thin = Image.new("RGBA", (96, 96), (0, 0, 0, 0)); ImageDraw.Draw(thin).line((48, 0, 48, 95), fill=(0, 0, 0, 255), width=2)
+    assert _background([thin]) == 0                          # no body at all -> falls back to every opaque pixel

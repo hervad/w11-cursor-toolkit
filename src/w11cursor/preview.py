@@ -16,7 +16,7 @@ import io
 import struct
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageStat
+from PIL import Image, ImageDraw, ImageFilter, ImageStat
 
 from .pack import parse_ani, parse_cur
 from .roles import ROLES
@@ -97,15 +97,28 @@ def _distinct(folder: Path) -> list[Path]:
 
 
 def _background(icons: list[Image.Image]) -> int:
-    """Index into PANELS that contrasts with the icons: their mean opaque luminance < 128 -> light panel."""
-    total = count = 0
-    for icon in icons:
-        lum, alpha = icon.convert("LA").split()
-        mask = alpha.point(lambda v: 255 if v > 127 else 0)
-        n = ImageStat.Stat(mask).sum[0] / 255
-        if n:
-            total += ImageStat.Stat(lum, mask).mean[0] * n
-            count += n
+    """Index into PANELS that contrasts with the icons' BODY: mean luminance < 128 -> light panel.
+
+    Body = opaque pixels at least `inset` px inside the silhouette, so outlines don't vote: Capitaine Dark (black body,
+    thick white outline) has more light than dark opaque pixels overall, which put it on the dark panel. Thin cursors
+    with no body (crosshair, I-beam) are skipped; if no icon has a body, every opaque pixel counts."""
+    def stats(inset: int) -> tuple[float, float]:
+        total = count = 0.0
+        for icon in icons:
+            lum, alpha = icon.convert("LA").split()
+            mask = alpha.point(lambda v: 255 if v > 127 else 0)
+            if inset:
+                mask = mask.filter(ImageFilter.MinFilter(2 * inset + 1))
+            n = ImageStat.Stat(mask).sum[0] / 255
+            if n:
+                total += ImageStat.Stat(lum, mask).mean[0] * n
+                count += n
+        return total, count
+
+    inset = max(1, round(icons[0].width / 32)) if icons else 0      # 3 px at the 96 px preview layer
+    total, count = stats(inset)
+    if not count:
+        total, count = stats(0)
     return 0 if count == 0 or total / count < 128 else 1
 
 
