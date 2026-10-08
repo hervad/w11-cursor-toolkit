@@ -84,8 +84,20 @@ def test_missing_licence_text_fails(tmp_path):
     theme, dist = _theme_copy(tmp_path, {"CREDITS.md": "credits only"})
     (zp,) = build_theme(theme, dist, only=["light"], log=lambda *_: None)
     rep = validate_theme(theme, dist, only=["light"])
-    assert any(e.startswith("light/: neither LICENSE nor COPYING") for e in rep.errors)
-    assert any(e.startswith(f"{zp.name}: neither LICENSE nor COPYING") for e in rep.errors)
+    assert any(e.startswith("light/: neither LICENSE nor LICENSE.GPL nor COPYING") for e in rep.errors)
+    assert any(e.startswith(f"{zp.name}: neither LICENSE nor LICENSE.GPL nor COPYING") for e in rep.errors)
+
+
+def test_license_gpl_name_is_kept_and_accepted(tmp_path):
+    """ComixCursors ships COPYING (a notice pointing to 'LICENSE.GPL') + LICENSE.GPL (full text): both keep their names."""
+    import zipfile
+
+    theme, dist = _theme_copy(tmp_path, {"COPYING": "see LICENSE.GPL", "LICENSE.GPL": "GPL v3 text"})
+    (zp,) = build_theme(theme, dist, only=["light"], log=lambda *_: None)
+    assert validate_theme(theme, dist, only=["light"]).ok
+    with zipfile.ZipFile(zp) as z:
+        names = {Path(n).name for n in z.namelist()}
+    assert {"COPYING", "LICENSE.GPL"} <= names
 
 
 def _pad_first_image(frame: bytes, extra: int) -> bytes:

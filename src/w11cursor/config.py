@@ -21,8 +21,10 @@ class ConfigError(ValueError):
 # Licence / notice files copied from the theme root into every variant folder and release zip.
 # GPL obliges whoever *distributes* copies to give recipients the licence text and keep the notices;
 # the zip is what users download, so the notices must travel inside it.
-NOTICE_FILES: tuple[str, ...] = ("LICENSE", "COPYING", "COPYRIGHT", "NOTICE", "AUTHORS", "CREDITS.md")
-LICENSE_TEXT_FILES: tuple[str, ...] = ("LICENSE", "COPYING")   # at least one must ship
+# Upstream notice files keep their names (theme repo root); every one present is copied into every variant/zip.
+# LICENSE.GPL: ComixCursors' COPYING points to it by that name.
+NOTICE_FILES: tuple[str, ...] = ("LICENSE", "LICENSE.GPL", "COPYING", "COPYRIGHT", "NOTICE", "AUTHORS", "CREDITS.md")
+LICENSE_TEXT_FILES: tuple[str, ...] = ("LICENSE", "LICENSE.GPL", "COPYING")   # at least one must ship
 
 
 @dataclass
