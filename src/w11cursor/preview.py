@@ -1,7 +1,8 @@
 """README preview image, drawn from the BUILT cursor files - the exact layers Windows gets, never re-rendered.
 
 Every row shows a variant's distinct cursors in Windows role order (byte-identical files such as Pin = Link once;
-animated cursors show frame 0). Two layouts, chosen automatically:
+animated cursors show their first frame that is at least 95 % as full as the fullest one: frame 0 for spinners,
+the complete shape for build-up animations that start nearly empty). Two layouts, chosen automatically:
   - "panels" (variants differ in at most half the cursors, e.g. a recoloured spinner): the first variant on a light
     and on a dark panel, then - after a thin divider - the other variants' files that differ from the first.
   - "rows" (variants differ in most cursors, e.g. dark/light themes): one row per variant, each on the background
@@ -24,10 +25,20 @@ PANELS = ((243, 243, 243), (32, 32, 32))      # light, dark background (RGB)
 DIVIDER = ((200, 200, 200), (80, 80, 80))     # divider colour per panel
 
 
+def _visible(img: Image.Image) -> int:
+    return sum(img.getchannel("A").histogram()[26:])
+
+
 def layer(blob: bytes, px: int) -> Image.Image:
-    """The px x px image of a .cur, or of frame 0 of an .ani, decoded as RGBA."""
+    """The px x px image of a .cur, or of an .ani's representative frame (see module docstring), as RGBA."""
     if blob[:4] == b"RIFF":
-        blob = parse_ani(blob).frames[0]
+        frames = [_cur_layer(f, px) for f in parse_ani(blob).frames]
+        full = max(_visible(f) for f in frames)
+        return next(f for f in frames if _visible(f) >= 0.95 * full)
+    return _cur_layer(blob, px)
+
+
+def _cur_layer(blob: bytes, px: int) -> Image.Image:
     for e in parse_cur(blob):
         if e.size != px:
             continue

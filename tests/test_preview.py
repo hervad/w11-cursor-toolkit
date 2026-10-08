@@ -103,3 +103,14 @@ def test_mostly_different_variants_get_one_row_each_on_a_contrasting_background(
 
 def test_recoloured_spinner_only_keeps_panels(dist):
     assert layout_for(dist) == "panels"
+
+
+def test_ani_preview_uses_the_first_nearly_full_frame():
+    def frame(n_px):                           # an n_px x n_px opaque square on a transparent 32 px canvas
+        img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+        img.paste((9, 9, 9, 255), (0, 0, n_px, n_px))
+        return pack_cur([CursorImage(img, (0, 0))])
+    build_up = pack_ani([frame(2), frame(10), frame(20), frame(10)], [3] * 4, rate_mode="auto")
+    assert sum(layer(build_up, 32).getchannel("A").histogram()[26:]) == 400       # the full frame, not frame 0
+    spinner = pack_ani([frame(20), frame(20), frame(20)], [3] * 3, rate_mode="auto")
+    assert layer(spinner, 32).getpixel((0, 0)) == (9, 9, 9, 255)                    # equal frames -> frame 0
