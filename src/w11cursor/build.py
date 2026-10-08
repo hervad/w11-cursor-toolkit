@@ -12,7 +12,7 @@ from .inf import make_inf, make_uninstall_cmd
 from .pack import CursorImage, pack_ani, pack_cur
 from .render import render_svg_text
 from .roles import ROLES
-from .split import extract, strip_filtered
+from .split import extract, rotate_element, strip_filtered
 
 
 @lru_cache(maxsize=8)
@@ -25,11 +25,17 @@ def _read_master(path: Path) -> str:
 def _svg_source(theme: Theme, variant: Variant, spec: CursorSpec, frame: int | None) -> tuple[str, str]:
     """(name for messages, SVG text) of one cursor or one animation frame, before recolour."""
     if spec.layers is None:
-        file = spec.svg if frame is None else spec.frames.format(n=spec.frame_start + frame)
+        file = spec.frames.format(n=spec.frame_start + frame) if (frame is not None and spec.frames) else spec.svg
         path = theme.find_svg(variant, file)
         if not path.exists():
             raise FileNotFoundError(f"SVG not found: {path}")
-        return path.name, path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
+        if spec.rotate is not None and frame is not None:      # single-file animation: rotate one element per frame
+            r = spec.rotate
+            name = f"{path.name}#frame{frame}"
+            center = tuple(r["center"]) if "center" in r else None
+            return name, rotate_element(text, r["id"], center, r["step_deg"] * frame, name)
+        return path.name, text
     if frame is None:  # a static cursor cut from the master can still be replaced by a hand-made override
         for folder in (variant.id, "_all"):
             override = theme.root / "overrides" / folder / f"{spec.role}.svg"
@@ -39,7 +45,7 @@ def _svg_source(theme: Theme, variant: Variant, spec: CursorSpec, frame: int | N
     rotate = None
     if spec.rotate is not None:
         r = spec.rotate
-        rotate = (r["id"], tuple(r["center"]), r["step_deg"] * frame)
+        rotate = (r["id"], tuple(r["center"]) if "center" in r else None, r["step_deg"] * frame)
     name = f"{master.name}:{spec.role}" + ("" if frame is None else f"#frame{frame}")
     return name, extract(_read_master(master), spec.layers, spec.transform, rotate,
                          expect_size=theme.canvas_for(spec), name=name)
@@ -53,7 +59,7 @@ def _layers(theme: Theme, variant: Variant, spec: CursorSpec, frame: int | None,
     return [
         CursorImage(
             render_svg_text(svg, name, n, variant.recolor, theme.renderer),
-            scale_hotspot(spec.hotspot, canvas, n, theme.hotspot_mode),
+            scale_hotspot(theme.hotspot_for(variant, spec), canvas, n, theme.hotspot_mode),
         )
         for n in sizes
     ]

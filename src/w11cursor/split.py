@@ -101,6 +101,34 @@ def _set_display_inline(el: ET.Element) -> None:
     el.set("style", ";".join(parts + ["display:inline"]))
 
 
+_OWN_ROTATE = re.compile(r"^\s*rotate\(\s*([-+0-9.eE]+)[\s,]+([-+0-9.eE]+)[\s,]+([-+0-9.eE]+)\s*\)")
+
+
+def _rotate(target: ET.Element, center: tuple[float, float] | None, angle: float, name: str) -> None:
+    """Rotate `target` by `angle` degrees, composed IN FRONT of its existing transform. center=None: about the centre
+    of the element's own leading rotate(a, cx, cy) - how ComixCursors animates (sed rotate(0, -> rotate(angle,)."""
+    existing = target.get("transform")
+    if center is None:
+        m = _OWN_ROTATE.match(existing or "")
+        if not m:
+            raise SplitError(f"{name}: rotate without center needs id {target.get('id')!r} to start its transform "
+                             f"with rotate(a, cx, cy); it has {existing!r}")
+        center = (float(m.group(2)), float(m.group(3)))
+    cx, cy = center
+    rot = f"rotate({angle:g} {cx:g} {cy:g})"
+    target.set("transform", f"{rot} {existing}" if existing else rot)
+
+
+def rotate_element(svg_text: str, rid: str, center: tuple[float, float] | None, angle: float, name: str = "svg") -> str:
+    """One animation frame of a single-file cursor: rotate the element with id `rid` (see _rotate)."""
+    root = ET.fromstring(svg_text)
+    target = next((e for e in root.iter() if e.get("id") == rid), None)
+    if target is None:
+        raise SplitError(f"{name}: rotate id {rid!r} not found")
+    _rotate(target, center, angle, name)
+    return ET.tostring(root, encoding="unicode")
+
+
 def layer_labels(master_text: str) -> list[str]:
     root = ET.fromstring(master_text)
     return [g.get(_LABEL) for g in root if g.get(_LAYER) == "layer"]
@@ -143,14 +171,12 @@ def extract(master_text: str, layers: list[str], transform: str | None = None,
         _set_display_inline(g)
 
     if rotate is not None:
-        rid, (cx, cy), angle = rotate
+        rid, center, angle = rotate
         target = next((e for g in kept for e in g.iter() if e.get("id") == rid), None)
         if target is None:
             where = "not in the master" if rid not in ids_in_master else f"outside the kept layers {layers}"
             raise SplitError(f"{name}: rotate id {rid!r} is {where}")
-        existing = target.get("transform")
-        rot = f"rotate({angle:g} {cx:g} {cy:g})"
-        target.set("transform", f"{rot} {existing}" if existing else rot)   # compose IN FRONT
+        _rotate(target, center, angle, name)
 
     if transform:
         wrapper = ET.Element(f"{{{SVG_NS}}}g", {"transform": transform})

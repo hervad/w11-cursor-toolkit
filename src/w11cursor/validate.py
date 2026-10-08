@@ -28,7 +28,7 @@ class Report:
         return not self.errors
 
 
-def _check_cur(blob: bytes, sizes, spec, canvas, mode, where, rep: Report, layer_format: str | None = None):
+def _check_cur(blob: bytes, sizes, hotspot, canvas, mode, where, rep: Report, layer_format: str | None = None):
     try:
         entries = parse_cur(blob)
     except ValueError as e:
@@ -44,7 +44,7 @@ def _check_cur(blob: bytes, sizes, spec, canvas, mode, where, rep: Report, layer
     if got != sorted(sizes):
         rep.errors.append(f"{where}: layers {got} != expected {sorted(sizes)}")
     for e in entries:
-        want = scale_hotspot(spec.hotspot, canvas, e.size, mode)
+        want = scale_hotspot(hotspot, canvas, e.size, mode)
         if e.hotspot != want:
             rep.errors.append(f"{where}@{e.size}: hotspot {e.hotspot} != expected {want}")
 
@@ -107,7 +107,8 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
                 continue
             blob = f.read_bytes()
             if not spec.animated:
-                _check_cur(blob, theme.static_sizes, spec, canvas, theme.hotspot_mode, where, rep, theme.layer_format)
+                _check_cur(blob, theme.static_sizes, theme.hotspot_for(v, spec), canvas, theme.hotspot_mode, where,
+                           rep, theme.layer_format)
                 continue
             try:
                 info = parse_ani(blob)
@@ -133,7 +134,8 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
                 rep.errors.append(f"{where}: {len(blob):,} B exceeds .ani download budget {theme.ani_budget:,} B")
             _check_ani_offsets(info, where, rep)
             for i, fr in enumerate(info.frames):
-                _check_cur(fr, theme.animated_sizes, spec, canvas, theme.hotspot_mode, f"{where}#frame{i}", rep,
+                _check_cur(fr, theme.animated_sizes, theme.hotspot_for(v, spec), canvas, theme.hotspot_mode,
+                           f"{where}#frame{i}", rep,
                            theme.layer_format)
         _check_notices(theme, v, folder, rep)
         inf = folder / "install.inf"

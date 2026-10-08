@@ -39,7 +39,7 @@ class CursorSpec:
     # --- cursors cut from ONE Inkscape master ([source] master), see split.py / ADR-13
     layers: list[str] | None = None    # inkscape:label of top-level layers to keep
     transform: str | None = None       # SVG transform around the kept layers
-    rotate: dict | None = None         # {id, center=[cx, cy] (parent coords), step_deg} -> animated
+    rotate: dict | None = None         # {id, center=[cx, cy] (parent coords; optional), step_deg} -> animated
     master: str | None = None          # per-cursor master instead of [source] master
 
     @property
@@ -53,6 +53,7 @@ class Variant:
     scheme_name: str
     svg_dir: Path
     recolor: dict[str, str] = field(default_factory=dict)
+    mirror_hotspots: bool = False      # x -> canvas - x for every cursor (a left-handed set drawn as a mirror image)
 
 
 @dataclass
@@ -103,6 +104,11 @@ class Theme:
     def master_for(self, spec: CursorSpec) -> Path:
         return (self.root / spec.master).resolve() if spec.master else self.master
 
+    def hotspot_for(self, variant: Variant, spec: CursorSpec) -> tuple[float, float]:
+        """The cursor's design-space hotspot for this variant (mirror_hotspots flips x within the canvas)."""
+        x, y = spec.hotspot
+        return (self.canvas_for(spec) - x, y) if variant.mirror_hotspots else (x, y)
+
     def canvas_for(self, spec: CursorSpec) -> int:
         return spec.design_canvas or self.design_canvas
 
@@ -127,7 +133,7 @@ KNOWN_KEYS: dict[str, set[str]] = {
     "sizes": {"static", "animated", "ani_budget_bytes", "ani_chunk_order", "ani_rate", "layer_format",
               "png_min_size"},   # removed; still recognised so it gets its own explanatory error below
     "source": {"master"},
-    "variants": {"id", "scheme_name", "svg_dir", "recolor"},
+    "variants": {"id", "scheme_name", "svg_dir", "recolor", "mirror_hotspots"},
     "cursors": {"svg", "frames", "frame_count", "frame_start", "delay", "hotspot", "design_canvas", "same_as",
                 "layers", "transform", "rotate", "master"},
 }
@@ -180,8 +186,11 @@ def load_theme(path: str | Path) -> Theme:
                 scheme_name=_req(v, "scheme_name", "variants"),
                 svg_dir=svg_dir,
                 recolor=dict(v.get("recolor", {})),
+                mirror_hotspots=v.get("mirror_hotspots", False),
             )
         )
+        if not isinstance(variants[-1].mirror_hotspots, bool):
+            raise ConfigError(f"[[variants]] id={variants[-1].id!r}: mirror_hotspots must be true or false")
     if not variants:
         raise ConfigError("at least one [[variants]] entry is required")
 
@@ -212,12 +221,15 @@ def load_theme(path: str | Path) -> Theme:
                 raise ConfigError(f"[cursors.{key}] layers must be a non-empty list of layer labels")
             if not (spec.master or master):
                 raise ConfigError(f"[cursors.{key}] layers needs [source] master (or a per-cursor master)")
-        elif spec.transform or spec.rotate or spec.master:
-            raise ConfigError(f"[cursors.{key}] transform / rotate / master only work together with layers")
+        elif spec.transform or spec.master:
+            raise ConfigError(f"[cursors.{key}] transform / master only work together with layers")
+        elif spec.rotate is not None and spec.svg is None:
+            raise ConfigError(f"[cursors.{key}] rotate needs layers or a single svg (not frames / same_as)")
         if spec.rotate is not None:
             rot = spec.rotate
-            ok = (isinstance(rot.get("id"), str) and isinstance(rot.get("center"), list) and len(rot["center"]) == 2
-                  and all(isinstance(v_, (int, float)) for v_ in rot["center"]) and isinstance(rot.get("step_deg"), (int, float))
+            center_ok = "center" not in rot or (isinstance(rot["center"], list) and len(rot["center"]) == 2
+                                                 and all(isinstance(v_, (int, float)) for v_ in rot["center"]))
+            ok = (isinstance(rot.get("id"), str) and center_ok and isinstance(rot.get("step_deg"), (int, float))
                   and set(rot) <= {"id", "center", "step_deg"})
             if not ok:
                 raise ConfigError(f"[cursors.{key}] rotate = {{ id = \"...\", center = [cx, cy], step_deg = n }}")
