@@ -69,7 +69,7 @@ def test_cli_preview(dist, tmp_path, monkeypatch):
     toml = tmp_path / "theme.toml"
     toml.write_text("")
     calls = {}
-    monkeypatch.setattr(cli, "_variant_dirs", lambda theme_path, dist_dir: dist)
+    monkeypatch.setattr(cli, "_variant_dirs", lambda theme_path, dist_dir, only=None: dist)
     monkeypatch.setattr("w11cursor.preview.make_preview",
                         lambda dirs, out, size, scale: calls.update(dirs=dirs, size=size) or out)
     assert cli.main(["preview", str(toml), "--out", str(tmp_path / "p.png")]) == 0
@@ -114,3 +114,16 @@ def test_ani_preview_uses_the_first_nearly_full_frame():
     assert sum(layer(build_up, 32).getchannel("A").histogram()[26:]) == 400       # the full frame, not frame 0
     spinner = pack_ani([frame(20), frame(20), frame(20)], [3] * 3, rate_mode="auto")
     assert layer(spinner, 32).getpixel((0, 0)) == (9, 9, 9, 255)                    # equal frames -> frame 0
+
+
+def test_variant_dirs_subset_keeps_given_order_and_rejects_unknown(tmp_path):
+    from pathlib import Path
+
+    from w11cursor.cli import _variant_dirs
+    from w11cursor.config import ConfigError
+
+    demo = Path(__file__).parents[1] / "examples" / "demo-theme" / "theme.toml"
+    assert _variant_dirs(demo, tmp_path) == [tmp_path / "light", tmp_path / "gold"]
+    assert _variant_dirs(demo, tmp_path, ["gold", "light"]) == [tmp_path / "gold", tmp_path / "light"]
+    with pytest.raises(ConfigError, match=r"unknown variant\(s\) \['nope'\]"):
+        _variant_dirs(demo, tmp_path, ["nope"])

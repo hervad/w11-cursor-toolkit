@@ -15,10 +15,15 @@ import sys
 from pathlib import Path
 
 
-def _variant_dirs(theme_path: Path, dist_dir: Path) -> list[Path]:
-    from .config import load_theme
+def _variant_dirs(theme_path: Path, dist_dir: Path, only: list[str] | None = None) -> list[Path]:
+    """Built variant folders in theme.toml order; `only` picks (and orders) a subset by id."""
+    from .config import ConfigError, load_theme
 
-    return [dist_dir / v.id for v in load_theme(theme_path).variants]
+    ids = [v.id for v in load_theme(theme_path).variants]
+    unknown = [i for i in (only or []) if i not in ids]
+    if unknown:
+        raise ConfigError(f"unknown variant(s) {unknown}; theme has: {', '.join(ids)}")
+    return [dist_dir / i for i in (only or ids)]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     pv.add_argument("--dist", type=Path, default=Path("dist"))
     pv.add_argument("--out", type=Path, default=Path("docs/preview.png"))
     pv.add_argument("--size", type=int, default=48, help="icon size in the image, before the 2x HiDPI scale")
+    pv.add_argument("--variant", action="append", help="only these variants, in this order (repeatable)")
 
     p = sub.add_parser("probe", help="write the size-probe cursor")
     p.add_argument("--out", type=Path, default=Path("probe"))
@@ -78,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         from .config import ConfigError
 
         try:
-            out = preview.make_preview(_variant_dirs(a.theme, a.dist), a.out, size=a.size, scale=2)
+            out = preview.make_preview(_variant_dirs(a.theme, a.dist, a.variant), a.out, size=a.size, scale=2)
         except (ConfigError, ValueError, OSError) as e:
             print(f"preview error: {e}", file=sys.stderr)
             return 5
