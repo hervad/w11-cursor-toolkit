@@ -133,3 +133,15 @@ same_as = "link"
 
 [cursors.person]       # Person Select (Win10 1903+). Same story.
 same_as = "link"
+
+# ── Colour checks (optional, v0.6.0+). `validate` samples the BUILT layer at design-unit points (like hotspots) and
+#    fails if a measure is missed. Pick points on solid areas; a point that is not fully opaque is an error.
+#    Metrics (exactly one): min_contrast (WCAG, needs b), min_delta_e (CIEDE2000, needs b), min_luminance, max_luminance.
+# [[checks]]
+# name = "pointer body vs outline"
+# role = "arrow"
+# a = [6, 14]                 # body
+# b = [3, 12]                 # outline
+# min_contrast = 3
+# size = 64                   # layer to sample (default 64); frame = 0 for animated roles
+# exempt = []                 # variant ids allowed to fail (e.g. faithful reproductions)

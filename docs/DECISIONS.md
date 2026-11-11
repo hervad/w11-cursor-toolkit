@@ -78,7 +78,11 @@ pointer's own colour (ΔE 0.0 / 9.2). From now on a colour variant also needs, c
 Gnome-look reproductions keep their author's colours (rule 2 exception). Variants may share these parts when they
 keep the original's accents on purpose (Capitaine's five Material colours: Unavailable = Capitaine Dark's). Rule
 change for themes: a part-specific recolour is anchored on a string unique to that part and placed before the
-generic rules. An automated check (sample two points of a built layer per role) is planned as its own toolkit change.
+generic rules. *Automated since v0.6.0:* `[[checks]]` in theme.toml - `validate` samples one or two design-unit points
+on a built layer (size, frame) and asserts `min_contrast` (WCAG), `min_delta_e` (CIEDE2000) or `min`/`max_luminance`,
+with an `exempt` list; a point that is not fully opaque is an error (artwork moved). *Evidence:* Capitaine's 9 checks
+pass on 3.2.1 and, run on the 3.2.0 build, flag exactly its defects (dark disc and rims/ring in the 10 colour
+variants, dot and Help badge in Tokyo Night and Blue) and nothing else.
 
 **ADR-10 Windows cairo: preload by full path.** cffi 2.x opens bare DLL names with
 `LoadLibraryExA(name, NULL, 0)` (legacy search order), which ignores `os.add_dll_directory` — so

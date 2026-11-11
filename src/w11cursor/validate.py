@@ -94,6 +94,61 @@ def _check_notices(theme: Theme, v: Variant, folder: Path, rep: Report):
                 rep.errors.append(f"{where}: {n} exists in the theme root but is missing here")
 
 
+def _check_colours(theme: Theme, v, folder: Path, rep: Report) -> None:
+    """[[checks]]: sample the built layer at design-unit points (like hotspots) and assert a colour measure.
+    A sample point must be fully opaque - if the artwork moves, the check fails loudly instead of measuring the
+    transparent background."""
+    from .colour import contrast, delta_e, hexc, relative_luminance
+    from .preview import _cur_layer
+    from .roles import ROLE_BY_KEY
+
+    for c in theme.checks:
+        if v.id in c.exempt:
+            continue
+        spec = theme.resolve(c.role)
+        f = folder / f"{ROLE_BY_KEY[c.role].filename}.{'ani' if spec.animated else 'cur'}"
+        where = f"{v.id}/{f.name}: check {c.name!r}"
+        if not f.exists():
+            continue                                   # 'missing' is already reported by the role loop
+        blob = f.read_bytes()
+        try:
+            if spec.animated:
+                frames = parse_ani(blob).frames
+                if c.frame >= len(frames):
+                    rep.errors.append(f"{where}: frame {c.frame} does not exist ({len(frames)} frames)")
+                    continue
+                blob = frames[c.frame]
+            img = _cur_layer(blob, c.size)
+        except ValueError as e:
+            rep.errors.append(f"{where}: {e}")
+            continue
+        canvas = theme.canvas_for(spec)
+        colours = []
+        for label, pt in (("a", c.a), ("b", c.b)):
+            if pt is None:
+                continue
+            x, y = (min(c.size - 1, int(k * c.size / canvas)) for k in pt)
+            px = img.getpixel((x, y))
+            if px[3] != 255:
+                rep.errors.append(f"{where}: point {label} {list(pt)} -> pixel ({x},{y}) is not opaque "
+                                  f"(alpha {px[3]}); the artwork moved or the point is off the shape")
+                break
+            colours.append(px[:3])
+        else:
+            if c.metric == "min_contrast":
+                val = contrast(*colours)
+            elif c.metric == "min_delta_e":
+                val = delta_e(*colours)
+            else:
+                val = relative_luminance(colours[0])
+            ok = val <= c.limit if c.metric == "max_luminance" else val >= c.limit
+            if not ok:
+                unit = {"min_contrast": ":1", "min_delta_e": " dE00"}.get(c.metric, "")
+                op = ">" if c.metric == "max_luminance" else "<"
+                rep.errors.append(f"{where}: {val:.2f}{unit} {op} {c.limit:g}{unit} "
+                                  f"({' vs '.join(hexc(col) for col in colours)})")
+
+
 def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> Report:
     rep = Report()
     expected_order = [("LIST:fram" if c == "LIST" else c) for c in theme.ani_order]
@@ -146,6 +201,7 @@ def validate_theme(theme: Theme, dist: Path, only: list[str] | None = None) -> R
                            f"{where}#frame{i}", rep,
                            theme.layer_format)
         _check_notices(theme, v, folder, rep)
+        _check_colours(theme, v, folder, rep)
         inf = folder / "install.inf"
         if not inf.exists():
             rep.errors.append(f"{v.id}: install.inf missing")
