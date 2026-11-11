@@ -67,8 +67,11 @@ outline, and 3.2.0 shipped two defects they could not see: the generic outline r
 darkened Dark's white Unavailable disc in 10 variants, and Tokyo Night / Blue had resize dots and Help badge in the
 pointer's own colour (ΔE 0.0 / 9.2). From now on a colour variant also needs, checked on the built files:
 
-- **Unavailable:** a light disc where the artwork has one, and sign vs disc ≥ 3:1 (Capitaine 3.2.1: the palette's
-  darker red where its own red is too pale on the light disc);
+- **the artwork's other white parts stay light** when only the outline is meant to change (Capitaine: Unavailable
+  disc, Busy and Working spinner rims, Help ring and "?"; list them per theme by searching the source for the outline
+  colour beyond the outline itself), and the Unavailable sign vs its disc ≥ 3:1 (Capitaine 3.2.1: the palette's darker
+  red where its own red is too pale). A light glyph that would be unreadable on a pastel badge may stay dark
+  (Capitaine palettes' Help "?": light 1.3-1.5:1);
 - **dots and badges** (resize, Move, Help): ≥ ΔE 15 from the pointer body (WCAG contrast is the wrong measure here:
   a dot can be 1.0:1 against the body and still a different hue, ΔE 40; the outline-coloured ring separates it).
 
