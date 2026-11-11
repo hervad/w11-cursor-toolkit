@@ -6,6 +6,7 @@ See theme-template/theme.toml for a fully commented example.
 """
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -56,6 +57,7 @@ class Variant:
     svg_dir: Path
     recolor: dict[str, str] = field(default_factory=dict)
     mirror_hotspots: bool = False      # x -> canvas - x for every cursor (a left-handed set drawn as a mirror image)
+    package: str | None = None         # variants with the same package share one release zip (e.g. Dark + Light)
 
 
 @dataclass
@@ -115,7 +117,11 @@ class Theme:
         return spec.design_canvas or self.design_canvas
 
     def zip_name(self, variant: Variant) -> str:
-        return f"{self.slug}-{variant.id}-w11-hidpi-v{self.version}.zip"
+        """<slug>-<package or id>-w11-hidpi-v<version>.zip; a package equal to the slug drops the repeat
+        (capitaine's Dark + Light: capitaine-w11-hidpi-v3.2.0.zip, not capitaine-capitaine-...)."""
+        stem = variant.package or variant.id
+        name = self.slug if stem == self.slug else f"{self.slug}-{stem}"
+        return f"{name}-w11-hidpi-v{self.version}.zip"
 
 
 def _req(tbl: dict, key: str, where: str):
@@ -135,7 +141,7 @@ KNOWN_KEYS: dict[str, set[str]] = {
     "sizes": {"static", "animated", "ani_budget_bytes", "ani_chunk_order", "ani_rate", "layer_format",
               "png_min_size"},   # removed; still recognised so it gets its own explanatory error below
     "source": {"master"},
-    "variants": {"id", "scheme_name", "svg_dir", "recolor", "mirror_hotspots"},
+    "variants": {"id", "scheme_name", "svg_dir", "recolor", "mirror_hotspots", "package"},
     "cursors": {"svg", "frames", "frame_count", "frame_start", "delay", "hotspot", "design_canvas", "same_as",
                 "layers", "transform", "rotate", "master"},
 }
@@ -189,12 +195,22 @@ def load_theme(path: str | Path) -> Theme:
                 svg_dir=svg_dir,
                 recolor=dict(v.get("recolor", {})),
                 mirror_hotspots=v.get("mirror_hotspots", False),
+                package=v.get("package"),
             )
         )
         if not isinstance(variants[-1].mirror_hotspots, bool):
             raise ConfigError(f"[[variants]] id={variants[-1].id!r}: mirror_hotspots must be true or false")
+        pkg = variants[-1].package
+        if pkg is not None and not (isinstance(pkg, str) and re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", pkg)):
+            raise ConfigError(f"[[variants]] id={variants[-1].id!r}: package must be lowercase letters, digits and "
+                              f"single hyphens, got {pkg!r}")
     if not variants:
         raise ConfigError("at least one [[variants]] entry is required")
+    packages = {v.package for v in variants if v.package}
+    for v in variants:
+        if v.package is None and v.id in packages:
+            raise ConfigError(f"[[variants]] id={v.id!r} has no package but another variant uses package {v.id!r}: "
+                              f"they would share one zip by accident; give it package = {v.id!r} or rename one")
 
     cursors: dict[str, CursorSpec] = {}
     for key, c in _req(data, "cursors", "root").items():

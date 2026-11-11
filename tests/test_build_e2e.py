@@ -199,3 +199,30 @@ def test_layer_format_bmp_builds_all_bmp(tmp_path):
     assert {e.fmt for e in parse_cur((tmp_path / "dist" / "light" / "pointer.cur").read_bytes())} == {"bmp"}
     fr = parse_ani((tmp_path / "dist" / "light" / "busy.ani").read_bytes()).frames[0]
     assert {e.fmt for e in parse_cur(fr)} == {"bmp"}
+
+
+def test_package_builds_one_zip_with_both_variant_folders(tmp_path):
+    """Two variants with the same package -> one zip, each in its own "<scheme name>/" folder, both validated."""
+    import zipfile
+
+    theme, dist = _theme_copy(tmp_path, {"LICENSE": "gpl text"})
+    toml = theme.root / "theme.toml"
+    toml.write_text(toml.read_text().replace('scheme_name = "w11cursor Demo"\n', 'scheme_name = "w11cursor Demo"\npackage = "pair"\n')
+                    .replace('scheme_name = "w11cursor Demo Gold"\n', 'scheme_name = "w11cursor Demo Gold"\npackage = "pair"\n'))
+    theme = load_theme(toml)
+    zips = build_theme(theme, dist, log=lambda *_: None)
+    assert [z.name for z in zips] == [f"{theme.slug}-pair-w11-hidpi-v{theme.version}.zip"]
+    with zipfile.ZipFile(zips[0]) as z:
+        tops = {n.split("/")[0] for n in z.namelist()}
+    assert tops == {"w11cursor Demo", "w11cursor Demo Gold"}
+    assert validate_theme(theme, dist).ok
+
+    # a licence file missing from ONE folder of the shared zip is caught for that variant only
+    with zipfile.ZipFile(zips[0]) as z:
+        keep = [(i, z.read(i)) for i in z.infolist() if i.filename != "w11cursor Demo Gold/LICENSE"]
+    with zipfile.ZipFile(zips[0], "w") as z:
+        for info, data in keep:
+            z.writestr(info, data)
+    errs = validate_theme(theme, dist).errors
+    assert any(e.startswith(f"{zips[0].name} (w11cursor Demo Gold/): neither") for e in errs), errs
+    assert not any("(w11cursor Demo/)" in e for e in errs), errs
