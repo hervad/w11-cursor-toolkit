@@ -13,7 +13,7 @@ w11-cursors/                         ← workspace folder = LOCAL-ONLY git repo 
 │   │   ├── pack/cur.py     multi-layer .cur writer + parser
 │   │   ├── pack/ani.py     RIFF/ACON .ani writer + parser (configurable chunk order)
 │   │   ├── inf.py          install.inf (17 roles) + uninstall.cmd
-│   │   ├── build.py        orchestration → dist/<variant>/ + zip
+│   │   ├── build.py        orchestration → dist/<variant>/ + one zip per variant or `package`
 │   │   ├── validate.py     re-parse built files, assert everything; `inspect` dumps
 │   │   ├── probe.py        size-probe cursor
 │   │   ├── split.py        cursors cut from one Inkscape master (layers / transform / rotate, ADR-13)
