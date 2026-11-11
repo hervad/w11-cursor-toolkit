@@ -119,3 +119,14 @@ backgrounds that outline is only visible against the shadow, and without it the 
 Windows' pointer shadow on (maintainer's on-screen check; 32 px comparison against upstream's own build). Survey of
 every shipped arrow: no other theme has a light outline on a dark body except published Capitaine Dark, which has
 its own grey halo. Rule of thumb: strip a baked shadow only when the outline is dark or the body is light.
+
+**ADR-15 Release zips: one per variant, or one per `package` (v0.5.0).** A Windows cursor scheme is exactly one set
+of 17 cursors, so a Dark + Light pair is always two schemes in Mouse Properties; what can be shared is the download.
+`[[variants]] package = "<name>"` puts variants in one zip, each in its own `<scheme name>/` folder with its own
+`install.inf`. Without it nothing changes (zip per variant, as before). Zip name `<slug>-<package or id>-w11-hidpi-
+v<version>.zip`; a package equal to the slug drops the repeat. A variant *without* a package whose id equals another
+variant's package is a config error (it would share a zip silently). `validate` checks the licence/notice files inside
+each variant's own folder of a shared zip, so one variant's licence cannot hide another's missing one.
+*First use:* Capitaine 3.2.0 (maintainer, 2026-11-11: "one zip each" for the four Dark + Light pairs): 18 schemes in
+14 zips; all 306 cursor files byte-identical to the per-variant build (packaging only). Tests: 10 in
+`tests/test_inf_and_config.py` + `tests/test_build_e2e.py`.
