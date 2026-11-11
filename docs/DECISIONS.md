@@ -40,6 +40,24 @@ source. Future (p/1457141) and Future-cyan (p/1465392) ship as two variants of `
 same repo and commit, all 93 drawings render with identical shapes, only the accent colour differs. Future-dark
 (p/1457884) joined as a third (grey accents; shapes identical except copy.svg, not a Windows role, and a few
 accent pixels). Still no invented variants: each one exists on a gnome-look page.
+*Amendment (2026-11-11), palette and colour variants:* a theme may add **colour-only recolours of its own artwork**
+(same shapes, sizes, hotspots, animation; `recolor` text replacement only) when each one
+
+1. follows a gnome-look page that recolours that artwork (reproduced as published), **or** uses the colour values
+   of a published palette under a permissive licence (MIT, Apache-2.0, …) or a standard colour system, credited in
+   CREDITS.md; no files of other projects are copied (rule 3 unchanged);
+2. is **visibly distinct**: no two pointer bodies closer than CIEDE2000 ΔE 15, checked on the built files;
+3. stays **readable**: pointer body vs outline contrast ≥ 3:1 (WCAG non-text minimum);
+4. passes `validate` and the real-loader test like any variant.
+
+*First use:* Capitaine 3.2 (issue hervad/capitaine-cursors-w11-hidpi#3). Nord, Gruvbox, Palenight reproduce
+sainnhe/capitaine-cursors release r5 (gnome-look p/1818760). Catppuccin Mocha, Dracula, Rosé Pine, Tokyo Night,
+Solarized colour the whole body with one palette signature colour (as catppuccin/cursors' accent variants do),
+because a faithful "background colour" body made them near-identical: measured on the built files (CIEDE2000 per
+pixel, 64 px layer), the drafts' worst pair was ΔE 2.5 (Mocha vs Tokyo Night), median 6.8; the final 18 have
+median 25.3, with sainnhe's own Nord vs Palenight (ΔE 5.0) the only close pair. Plain Blue/Red/Green/Amber/Purple
+(Material Design) follow the colour names most used in the top 500 gnome-look cursor themes; Pink and Teal were
+dropped as near-duplicates of Red and Green (ΔE 5.5, 6.7).
 
 **ADR-10 Windows cairo: preload by full path.** cffi 2.x opens bare DLL names with
 `LoadLibraryExA(name, NULL, 0)` (legacy search order), which ignores `os.add_dll_directory` — so

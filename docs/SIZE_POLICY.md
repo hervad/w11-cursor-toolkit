@@ -163,6 +163,19 @@ loader stores that offset in 16 bits. Consequences:
 Cross-checked against Windows: offsets 61,000 and 65,535 load, 66,000 fails. `ani_budget_bytes` (1 MB) stays as a
 **download-size cap**; the evidence gives no loader reason for a byte budget.
 
+### Capitaine palette variants (2026-11-11, Windows 11 build 26300, local builds)
+Capitaine 3.2 adds 16 recoloured variants (ADR-9 amendment 2026-11-11). Same 11 animated sizes as Dark/Light; only
+the colours change, and colourful spinners compress worse than Capitaine's original:
+- **Largest `busy.ani`:** 1,809,422 B (palenight-dark), then nord-dark 1,765,774 and gruvbox-dark 1,736,180; Dark/Light
+  ~1.55-1.66 MB. Capitaine's `ani_budget_bytes` goes from 1,800,000 to **1,850,000** (theme.toml): a download cap, as above.
+- **Largest image offset:** 63,808 = 97 % of 65,535 (palenight-light busy frame 14); 7 variants warn (93-97 %). All 306
+  files of the 18 variants load with `Test-LoadCursors.ps1` (0 failures). Headroom is 1,727 B: CI renders on Linux and
+  may differ by a few antialiasing pixels, so the CI load test is the gate, not this local run.
+- **Lesson - keep blurred shadows black when recolouring.** Tinting the soft shadow (a fill-less, blurred path) made
+  `busy.ani` ~50 % larger (nord-light 1.66 → 2.41 MB) and pushed offsets past 65,535, so Windows would refuse the
+  frames. Pinning the shadow to `fill="#000"` brought it back to 1.77 MB. *Cause, inferred:* fading colour + alpha
+  carries rounding noise in RGB that PNG compresses badly; black stays exactly 0,0,0.
+
 ### Static .cur: no 64 KiB limit (2026-10-08, [build 26200.9457], display 100 %)
 `w11cursor inspect` now prints each image's start offset. `aero_arrow.cur` (largest-first, BMP): 128 @86, 96 @67,710,
 64 @105,766, 48 @122,702, **32 @132,342**; 51 of 183 stock `.cur` files have an image starting past 65,535.
