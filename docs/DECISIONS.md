@@ -66,10 +66,12 @@ dropped as near-duplicates of Red and Green (ΔE 5.5, 6.7).
 outline, and 3.2.0 shipped two defects they could not see: the generic outline rule (`fill="#fff"` -> dark) also
 darkened Dark's white Unavailable disc in 10 variants, and Tokyo Night / Blue had resize dots and Help badge in the
 pointer's own colour (ΔE 0.0 / 9.2). From now on a colour variant also needs, checked on the built files:
+
 - **Unavailable:** a light disc where the artwork has one, and sign vs disc ≥ 3:1 (Capitaine 3.2.1: the palette's
   darker red where its own red is too pale on the light disc);
 - **dots and badges** (resize, Move, Help): ≥ ΔE 15 from the pointer body (WCAG contrast is the wrong measure here:
   a dot can be 1.0:1 against the body and still a different hue, ΔE 40; the outline-coloured ring separates it).
+
 Gnome-look reproductions keep their author's colours (rule 2 exception). Variants may share these parts when they
 keep the original's accents on purpose (Capitaine's five Material colours: Unavailable = Capitaine Dark's). Rule
 change for themes: a part-specific recolour is anchored on a string unique to that part and placed before the
