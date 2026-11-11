@@ -46,7 +46,9 @@ accent pixels). Still no invented variants: each one exists on a gnome-look page
 1. follows a gnome-look page that recolours that artwork (reproduced as published), **or** uses the colour values
    of a published palette under a permissive licence (MIT, Apache-2.0, …) or a standard colour system, credited in
    CREDITS.md; no files of other projects are copied (rule 3 unchanged);
-2. is **visibly distinct**: no two pointer bodies closer than CIEDE2000 ΔE 15, checked on the built files;
+2. is **visibly distinct**: no two pointer bodies closer than CIEDE2000 ΔE 15, checked on the built files.
+   *Exception:* a faithful reproduction of a gnome-look page (case 1) keeps its author's colours even if two of its
+   variants are close; the closeness is documented, not "fixed";
 3. stays **readable**: pointer body vs outline contrast ≥ 3:1 (WCAG non-text minimum);
 4. passes `validate` and the real-loader test like any variant.
 
@@ -55,7 +57,9 @@ sainnhe/capitaine-cursors release r5 (gnome-look p/1818760). Catppuccin Mocha, D
 Solarized colour the whole body with one palette signature colour (as catppuccin/cursors' accent variants do),
 because a faithful "background colour" body made them near-identical: measured on the built files (CIEDE2000 per
 pixel, 64 px layer), the drafts' worst pair was ΔE 2.5 (Mocha vs Tokyo Night), median 6.8; the final 18 have
-median 25.3, with sainnhe's own Nord vs Palenight (ΔE 5.0) the only close pair. Plain Blue/Red/Green/Amber/Purple
+median 25.3, with sainnhe's own Nord vs Palenight (ΔE 5.0; bodies 5.5, outlines 2.0, so they differ mainly in the
+spinner, Move dot and Unavailable sign) the only close pair, kept under the exception (maintainer, 2026-11-11: keep
+sainnhe's Palenight rather than drop or restyle it). Plain Blue/Red/Green/Amber/Purple
 (Material Design) follow the colour names most used in the top 500 gnome-look cursor themes; Pink and Teal were
 dropped as near-duplicates of Red and Green (ΔE 5.5, 6.7).
 
