@@ -145,3 +145,5 @@ same_as = "link"
 # min_contrast = 3
 # size = 64                   # layer to sample (default 64); frame = 0 for animated roles
 # exempt = []                 # variant ids allowed to fail (e.g. faithful reproductions)
+# only = []                   # v0.6.1: run only for these ids; only/exempt take glob patterns ("slim-*")
+# min_alpha = 255              # v0.6.1: how opaque a sample pixel must be (lower for transparent themes)

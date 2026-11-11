@@ -62,7 +62,11 @@ def test_checks_parse(tmp_path):
     ('role = "arrow"\na = [1, 1]\nmin_contrast = 3', "add b"),
     ('role = "arrow"\na = [1, 1]\nb = [2, 2]\nmin_luminance = 0.5', "remove b"),
     ('role = "arrow"\na = [1]\nmin_luminance = 0.5', "must be \\[x, y\\]"),
-    ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nexempt = ["ghost"]', "unknown variant"),
+    ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nexempt = ["ghost"]', "exempt matches no variant: ghost"),
+    ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nonly = ["sl*"]', "only matches no variant: sl\\*"),
+    ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nexempt = ["*"]', "leave no variant"),
+    ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nmin_alpha = 0', "min_alpha must be"),
+    ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nmin_alpha = 256', "min_alpha must be"),
     ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\nsize = 0', "size must be"),
     ('role = "arrow"\na = [1, 1]\nmin_luminance = 0.5\ncolour = "x"', "unknown key"),
 ])
@@ -132,3 +136,48 @@ exempt = ["gold"]
     assert not any(e.startswith("gold/") and "'two body points differ'" in e for e in errs), errs
     # a point on the transparent background is an error of its own, not a silent pass
     assert any(e.startswith("light/pointer.cur: check 'off the shape': point a") and "not opaque" in e for e in errs)
+
+
+# ── v0.6.1: glob patterns in only / exempt, min_alpha ────────────────────────────────────────────────────────────
+def test_only_and_exempt_take_glob_patterns(tmp_path):
+    t = _demo(tmp_path, '[[checks]]\nname = "x"\nrole = "arrow"\na = [6, 14]\nmin_luminance = 0.5\n'
+                        'only = ["l*"]\n\n'
+                        '[[checks]]\nname = "y"\nrole = "arrow"\na = [6, 14]\nmin_luminance = 0.5\nexempt = ["g?ld"]\n')
+    only_l, exempt_gold = t.checks
+    assert only_l.applies("light") and not only_l.applies("gold")
+    assert exempt_gold.applies("light") and not exempt_gold.applies("gold")
+    assert only_l.min_alpha == 255
+
+
+def test_min_alpha_lets_semi_transparent_points_be_measured(tmp_path):
+    from w11cursor.validate import validate_theme
+
+    # the demo arrow's stroke is 1.5 units wide; its outer edge at 64 px is antialiased (0 < alpha < 255).
+    # Find such a pixel on the built file, then check it with and without min_alpha.
+    t0 = _demo(tmp_path, "")
+    dist = _build(t0, tmp_path)
+    from w11cursor.preview import _cur_layer
+
+    im = _cur_layer((dist / "light" / "pointer.cur").read_bytes(), 64).convert("RGBA")
+    x, y, a = next((x, y, im.getpixel((x, y))[3]) for y in range(64) for x in range(64)
+                   if 100 <= im.getpixel((x, y))[3] <= 200)
+    pt = [round((x + 0.5) * 32 / 64, 3), round((y + 0.5) * 32 / 64, 3)]
+    root = tmp_path / "theme" / "theme.toml"
+    root.write_text(root.read_text() + f"""
+[[checks]]
+name = "edge, default alpha"
+role = "arrow"
+a = {pt}
+max_luminance = 1.0
+
+[[checks]]
+name = "edge, min_alpha 50"
+role = "arrow"
+a = {pt}
+max_luminance = 1.0
+min_alpha = 50
+""")
+    t = load_theme(root)
+    errs = validate_theme(t, dist).errors
+    assert any("'edge, default alpha'" in e and f"(alpha {a} < 255)" in e for e in errs), errs
+    assert not any("'edge, min_alpha 50'" in e for e in errs), errs
