@@ -60,6 +60,24 @@ class Variant:
     package: str | None = None         # variants with the same package share one release zip (e.g. Dark + Light)
 
 
+CHECK_METRICS = ("min_contrast", "min_delta_e", "min_luminance", "max_luminance")
+
+
+@dataclass
+class Check:
+    """[[checks]]: colours sampled on a BUILT layer must meet a measure (ADR-9 note 2026-11-11). Points are in design
+    units like hotspots; `b` is needed for contrast / delta_e and not used by the luminance metrics."""
+    name: str
+    role: str
+    metric: str                        # one of CHECK_METRICS
+    limit: float
+    a: tuple[float, float]
+    b: tuple[float, float] | None = None
+    size: int = 64
+    frame: int = 0
+    exempt: tuple[str, ...] = ()
+
+
 @dataclass
 class Theme:
     root: Path
@@ -83,6 +101,7 @@ class Theme:
     cursors: dict[str, CursorSpec]
     master: Path | None = None         # [source] master (absolute)
     strip_filtered: bool = False       # [render] strip_filtered: drop filtered elements = baked shadow (ADR-14)
+    checks: list[Check] = field(default_factory=list)   # [[checks]] colour checks on the built files
 
     def resolve(self, key: str) -> CursorSpec:
         """Follow same_as links (pin -> link etc.)."""
@@ -133,7 +152,8 @@ def _req(tbl: dict, key: str, where: str):
 # Every key the toolkit reads. An unknown key is an error, not ignored: a typo would otherwise do nothing, and a
 # theme that needs a newer toolkit (e.g. [render] strip_filtered) would build WRONG on an older one without a word.
 KNOWN_KEYS: dict[str, set[str]] = {
-    "<root>": {"schema", "theme", "upstream", "render", "sizes", "source", "variants", "cursors"},
+    "<root>": {"schema", "theme", "upstream", "render", "sizes", "source", "variants", "cursors", "checks"},
+    "checks": {"name", "role", "a", "b", "size", "frame", "exempt", *CHECK_METRICS},
     "theme": {"slug", "name", "version", "license", "porter", "description"},
     "upstream": {"kind", "url", "ref", "path", "authors", "license", "page",          # provenance
                  "archive", "sha256", "extract", "into"},                              # w11cursor unpack
@@ -166,6 +186,50 @@ def _check_keys(data: dict) -> None:
     for key, c in data.get("cursors", {}).items():
         if isinstance(c, dict):
             bad("cursors", f"[cursors.{key}]", c)
+    for c in data.get("checks", []):
+        if isinstance(c, dict):
+            bad("checks", f"[[checks]] name={c.get('name')!r}", c)
+
+
+def _point(value, where: str) -> tuple[float, float]:
+    if not (isinstance(value, list) and len(value) == 2 and all(isinstance(x, (int, float)) for x in value)):
+        raise ConfigError(f"{where} must be [x, y] in design units, got {value!r}")
+    return float(value[0]), float(value[1])
+
+
+def _parse_checks(data: dict, variant_ids: set[str]) -> list[Check]:
+    out = []
+    for c in data.get("checks", []):
+        name = _req(c, "name", "checks")
+        where = f"[[checks]] {name!r}"
+        role = _req(c, "role", "checks")
+        if role not in ROLE_BY_KEY:
+            raise ConfigError(f"{where}: unknown role {role!r} (one of: {', '.join(r.key for r in ROLES)})")
+        metrics = [m for m in CHECK_METRICS if m in c]
+        if len(metrics) != 1:
+            raise ConfigError(f"{where}: give exactly one of {', '.join(CHECK_METRICS)} (got {metrics or 'none'})")
+        metric = metrics[0]
+        limit = c[metric]
+        if not isinstance(limit, (int, float)) or isinstance(limit, bool):
+            raise ConfigError(f"{where}: {metric} must be a number")
+        a = _point(_req(c, "a", "checks"), f"{where} a")
+        pair = metric in ("min_contrast", "min_delta_e")
+        if pair and "b" not in c:
+            raise ConfigError(f"{where}: {metric} compares two points - add b = [x, y]")
+        if not pair and "b" in c:
+            raise ConfigError(f"{where}: {metric} reads one point (a); remove b")
+        b = _point(c["b"], f"{where} b") if pair else None
+        size, frame = c.get("size", 64), c.get("frame", 0)
+        if not isinstance(size, int) or size <= 0 or not isinstance(frame, int) or frame < 0:
+            raise ConfigError(f"{where}: size must be a positive integer and frame >= 0")
+        exempt = c.get("exempt", [])
+        if not isinstance(exempt, list) or not all(isinstance(x, str) for x in exempt):
+            raise ConfigError(f"{where}: exempt must be a list of variant ids")
+        unknown = sorted(set(exempt) - variant_ids)
+        if unknown:
+            raise ConfigError(f"{where}: exempt names unknown variant(s): {', '.join(unknown)}")
+        out.append(Check(name, role, metric, float(limit), a, b, size, frame, tuple(exempt)))
+    return out
 
 
 def load_theme(path: str | Path) -> Theme:
@@ -288,6 +352,7 @@ def load_theme(path: str | Path) -> Theme:
         cursors=cursors,
         master=master,
         strip_filtered=r.get("strip_filtered", False),
+        checks=_parse_checks(data, {v.id for v in variants}),
     )
     for k in cursors:
         theme.resolve(k)  # detect same_as loops early
