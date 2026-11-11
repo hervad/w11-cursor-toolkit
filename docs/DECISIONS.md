@@ -80,7 +80,10 @@ keep the original's accents on purpose (Capitaine's five Material colours: Unava
 change for themes: a part-specific recolour is anchored on a string unique to that part and placed before the
 generic rules. *Automated since v0.6.0:* `[[checks]]` in theme.toml - `validate` samples one or two design-unit points
 on a built layer (size, frame) and asserts `min_contrast` (WCAG), `min_delta_e` (CIEDE2000) or `min`/`max_luminance`,
-with an `exempt` list; a point that is not fully opaque is an error (artwork moved). *Evidence:* Capitaine's 9 checks
+with an `exempt` list; a point that is not fully opaque is an error (artwork moved). *v0.6.1:* `only` and
+`exempt` take glob patterns (`"slim-*"`) - one check per geometry group in themes like Comix - and a pattern that
+matches no variant is a config error; `min_alpha` lowers the opacity a sample needs (Comix's transparent variants
+never exceed alpha 190); colours are then compared as drawn, without blending. *Evidence:* Capitaine's 9 checks
 pass on 3.2.1 and, run on the 3.2.0 build, flag exactly its defects (dark disc and rims/ring in the 10 colour
 variants, dot and Help badge in Tokyo Night and Blue) and nothing else.
 

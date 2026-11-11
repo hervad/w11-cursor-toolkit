@@ -75,7 +75,16 @@ class Check:
     b: tuple[float, float] | None = None
     size: int = 64
     frame: int = 0
-    exempt: tuple[str, ...] = ()
+    exempt: tuple[str, ...] = ()       # variant ids or glob patterns ("slim-*") allowed to fail
+    only: tuple[str, ...] = ()         # if set: the check applies only to these ids / glob patterns (v0.6.1)
+    min_alpha: int = 255               # a sample pixel must be at least this opaque (v0.6.1; transparent themes)
+
+    def applies(self, variant_id: str) -> bool:
+        from fnmatch import fnmatchcase
+
+        if self.only and not any(fnmatchcase(variant_id, p) for p in self.only):
+            return False
+        return not any(fnmatchcase(variant_id, p) for p in self.exempt)
 
 
 @dataclass
@@ -153,7 +162,7 @@ def _req(tbl: dict, key: str, where: str):
 # theme that needs a newer toolkit (e.g. [render] strip_filtered) would build WRONG on an older one without a word.
 KNOWN_KEYS: dict[str, set[str]] = {
     "<root>": {"schema", "theme", "upstream", "render", "sizes", "source", "variants", "cursors", "checks"},
-    "checks": {"name", "role", "a", "b", "size", "frame", "exempt", *CHECK_METRICS},
+    "checks": {"name", "role", "a", "b", "size", "frame", "exempt", "only", "min_alpha", *CHECK_METRICS},
     "theme": {"slug", "name", "version", "license", "porter", "description"},
     "upstream": {"kind", "url", "ref", "path", "authors", "license", "page",          # provenance
                  "archive", "sha256", "extract", "into"},                              # w11cursor unpack
@@ -222,13 +231,24 @@ def _parse_checks(data: dict, variant_ids: set[str]) -> list[Check]:
         size, frame = c.get("size", 64), c.get("frame", 0)
         if not isinstance(size, int) or size <= 0 or not isinstance(frame, int) or frame < 0:
             raise ConfigError(f"{where}: size must be a positive integer and frame >= 0")
-        exempt = c.get("exempt", [])
-        if not isinstance(exempt, list) or not all(isinstance(x, str) for x in exempt):
-            raise ConfigError(f"{where}: exempt must be a list of variant ids")
-        unknown = sorted(set(exempt) - variant_ids)
-        if unknown:
-            raise ConfigError(f"{where}: exempt names unknown variant(s): {', '.join(unknown)}")
-        out.append(Check(name, role, metric, float(limit), a, b, size, frame, tuple(exempt)))
+        from fnmatch import fnmatchcase
+
+        lists = {}
+        for key in ("exempt", "only"):
+            pats = c.get(key, [])
+            if not isinstance(pats, list) or not all(isinstance(x, str) for x in pats):
+                raise ConfigError(f"{where}: {key} must be a list of variant ids or glob patterns")
+            dead = [p for p in pats if not any(fnmatchcase(v, p) for v in variant_ids)]
+            if dead:   # a typo would silently switch the check off (exempt) or never run it (only)
+                raise ConfigError(f"{where}: {key} matches no variant: {', '.join(dead)}")
+            lists[key] = tuple(pats)
+        min_alpha = c.get("min_alpha", 255)
+        if not isinstance(min_alpha, int) or isinstance(min_alpha, bool) or not 1 <= min_alpha <= 255:
+            raise ConfigError(f"{where}: min_alpha must be an integer 1..255")
+        chk = Check(name, role, metric, float(limit), a, b, size, frame, lists["exempt"], lists["only"], min_alpha)
+        if not any(chk.applies(v) for v in variant_ids):
+            raise ConfigError(f"{where}: only/exempt leave no variant to check")
+        out.append(chk)
     return out
 
 

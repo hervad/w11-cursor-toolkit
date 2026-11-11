@@ -103,7 +103,7 @@ def _check_colours(theme: Theme, v, folder: Path, rep: Report) -> None:
     from .roles import ROLE_BY_KEY
 
     for c in theme.checks:
-        if v.id in c.exempt:
+        if not c.applies(v.id):
             continue
         spec = theme.resolve(c.role)
         f = folder / f"{ROLE_BY_KEY[c.role].filename}.{'ani' if spec.animated else 'cur'}"
@@ -129,9 +129,9 @@ def _check_colours(theme: Theme, v, folder: Path, rep: Report) -> None:
                 continue
             x, y = (min(c.size - 1, int(k * c.size / canvas)) for k in pt)
             px = img.getpixel((x, y))
-            if px[3] != 255:
-                rep.errors.append(f"{where}: point {label} {list(pt)} -> pixel ({x},{y}) is not opaque "
-                                  f"(alpha {px[3]}); the artwork moved or the point is off the shape")
+            if px[3] < c.min_alpha:   # colours are compared as drawn (the pixel's own RGB, no blending)
+                rep.errors.append(f"{where}: point {label} {list(pt)} -> pixel ({x},{y}) is not opaque enough "
+                                  f"(alpha {px[3]} < {c.min_alpha}); the artwork moved or the point is off the shape")
                 break
             colours.append(px[:3])
         else:
