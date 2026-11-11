@@ -99,17 +99,25 @@ def build_variant(theme: Theme, variant: Variant, out_root: Path, log=print) -> 
 
 
 def build_theme(theme: Theme, out_root: Path, only: list[str] | None = None, log=print) -> list[Path]:
+    """Build the variant folders, then one zip per package (a variant without `package` is its own package).
+    A zip holds "<scheme name>/<file>" for every variant of its package whose folder exists in out_root, so building
+    one variant of a pair with --variant still writes a complete zip if the other was built before."""
     out_root.mkdir(parents=True, exist_ok=True)
-    zips = []
+    built = []
     for v in theme.variants:
         if only and v.id not in only:
             continue
         log(f"[{theme.slug}] building variant '{v.id}' -> {v.scheme_name}")
-        folder = build_variant(theme, v, out_root, log)
-        zpath = out_root / theme.zip_name(v)
+        build_variant(theme, v, out_root, log)
+        built.append(v)
+    zips = []
+    for name in dict.fromkeys(theme.zip_name(v) for v in built):      # theme order, each zip once
+        members = [v for v in theme.variants if theme.zip_name(v) == name and (out_root / v.id).is_dir()]
+        zpath = out_root / name
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
-            for f in sorted(folder.iterdir()):
-                z.write(f, f"{v.scheme_name}/{f.name}")
+            for v in members:
+                for f in sorted((out_root / v.id).iterdir()):
+                    z.write(f, f"{v.scheme_name}/{f.name}")
         zips.append(zpath)
-        log(f"  -> {zpath.name}")
+        log(f"  -> {name}" + (f" ({', '.join(v.id for v in members)})" if len(members) > 1 else ""))
     return zips

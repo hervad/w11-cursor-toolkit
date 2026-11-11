@@ -58,3 +58,41 @@ def test_layer_format_config_errors(tmp_path, sizes_table, message):
                  + f"\n[sizes]\n{sizes_table}\n")
     with pytest.raises(ConfigError, match=message):
         load_theme(p)
+
+
+def _demo_with(tmp_path, light_extra: str = "", gold_extra: str = ""):
+    """Demo theme (light + gold variants) with extra lines appended to each [[variants]] table."""
+    text = DEMO.read_text().replace('svg_dir = "svg"', f'svg_dir = "{(DEMO.parent / "svg").as_posix()}"')
+    text = text.replace('scheme_name = "w11cursor Demo"\n', f'scheme_name = "w11cursor Demo"\n{light_extra}\n', 1)
+    text = text.replace('scheme_name = "w11cursor Demo Gold"\n', f'scheme_name = "w11cursor Demo Gold"\n{gold_extra}\n', 1)
+    p = tmp_path / "theme.toml"
+    p.write_text(text)
+    return load_theme(p)
+
+
+def test_zip_name_without_package_is_per_variant(tmp_path):
+    t = _demo_with(tmp_path)
+    assert [t.zip_name(v) for v in t.variants] == [f"{t.slug}-light-w11-hidpi-v{t.version}.zip",
+                                                   f"{t.slug}-gold-w11-hidpi-v{t.version}.zip"]
+
+
+def test_variants_with_one_package_share_a_zip(tmp_path):
+    t = _demo_with(tmp_path, 'package = "pair"', 'package = "pair"')
+    assert {t.zip_name(v) for v in t.variants} == {f"{t.slug}-pair-w11-hidpi-v{t.version}.zip"}
+
+
+def test_package_equal_to_slug_drops_the_repeat(tmp_path):
+    t = _demo_with(tmp_path)
+    t = _demo_with(tmp_path, f'package = "{t.slug}"', f'package = "{t.slug}"')
+    assert t.zip_name(t.variants[0]) == f"{t.slug}-w11-hidpi-v{t.version}.zip"
+
+
+@pytest.mark.parametrize("bad", ['"Pair"', '"pair_x"', '"-pair"', '""', "3"])
+def test_bad_package_name_is_an_error(tmp_path, bad):
+    with pytest.raises(ConfigError, match="package must be"):
+        _demo_with(tmp_path, f"package = {bad}")
+
+
+def test_package_named_like_an_unpackaged_variant_is_an_error(tmp_path):
+    with pytest.raises(ConfigError, match="share one zip by accident"):
+        _demo_with(tmp_path, gold_extra='package = "light"')

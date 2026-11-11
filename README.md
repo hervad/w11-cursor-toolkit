@@ -8,7 +8,7 @@ theme.toml ──► config ──► render (SVG → RGBA, every size natively)
                        ──► pack (.cur multi-layer / .ani RIFF)
                        ──► install.inf (17 roles incl. Pin + Person) + uninstall.cmd
                        ──► validate (re-parse bytes, assert sizes/hotspots/chunk order/budget)
-                       ──► zip per variant ──► GitHub Release
+                       ──► zip per variant (or per `package`) ──► GitHub Release
 ```
 
 ## Install (dev)

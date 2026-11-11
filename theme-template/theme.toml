@@ -5,7 +5,7 @@
 schema = 1
 
 [theme]
-slug        = "TODO-slug"               # used in zip names: <slug>-<variant>-w11-hidpi-v<version>.zip
+slug        = "TODO-slug"               # used in zip names: <slug>-<variant or package>-w11-hidpi-v<version>.zip
 name        = "TODO Upstream Name"
 version     = "0.1.0"                   # YOUR port version (tag v0.1.0 to release)
 license     = "TODO-SPDX"               # artwork license = upstream license (GPL-3.0-only, GPL-2.0-only, ...)
@@ -58,6 +58,8 @@ id          = "default"
 scheme_name = "TODO Name W11 HiDPI"     # what users see in Mouse Properties; must be unique
 svg_dir     = "upstream/src/svg"        # TODO
 # recolor   = { "#000000" = "#ffffff" } # exact text replacements in the SVG source (optional)
+# package   = "nord"                    # optional: variants with the same package share one zip (e.g. Dark +
+#                                       # Light); a package equal to the slug gives <slug>-w11-hidpi-v<version>.zip
 
 # ── Windows roles (all 17 required). svg = file in svg_dir (overrides/<variant>/ wins),
 #    frames = animated, same_as = reuse another role's art. Hints = usual Xcursor names.

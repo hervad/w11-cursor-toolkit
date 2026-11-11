@@ -76,8 +76,16 @@ def _check_notices(theme: Theme, v: Variant, folder: Path, rep: Report):
         rep.errors.append(f"{v.id}: release zip {zpath.name} missing")
     else:
         with zipfile.ZipFile(zpath) as z:
-            # build.py writes "<scheme name>/<file>"; only that top level counts
-            places[zpath.name] = {n.split("/")[1] for n in z.namelist() if n.count("/") == 1 and not n.endswith("/")}
+            # build.py writes "<scheme name>/<file>"; only this variant's own folder counts, so in a shared
+            # (package) zip one variant's licence file can't hide another's missing one
+            prefix = f"{v.scheme_name}/"
+            mine = {n[len(prefix):] for n in z.namelist() if n.startswith(prefix)}
+            files = {n for n in mine if n and "/" not in n}
+            shared = any(not n.startswith(prefix) for n in z.namelist())
+            where = f"{zpath.name} ({prefix})" if shared else zpath.name
+            if not files:
+                rep.errors.append(f"{where}: no files for {v.id} in this zip")
+            places[where] = files
     for where, names in places.items():
         if not names & set(LICENSE_TEXT_FILES):
             rep.errors.append(f"{where}: neither {' nor '.join(LICENSE_TEXT_FILES)} - recipients must get the licence text")
